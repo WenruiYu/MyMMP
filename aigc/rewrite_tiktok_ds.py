@@ -13,6 +13,42 @@ from openai import OpenAI
 
 HASHTAG_PATTERN = re.compile(r"#([\w\-\u4e00-\u9fff]+)", re.UNICODE)
 
+def preprocess_tts_text(text):
+    """
+    Preprocess TTS text by converting all punctuation marks to newlines.
+    This is necessary because batch-generated TTS documents currently cannot handle automatic line breaks.
+    """
+    if not text:
+        return text
+    
+    # Define all common punctuation marks including Chinese and English punctuation
+    # List all punctuation marks we want to replace
+    punctuation_marks = [
+        '，', '。', '！', '？', '；', '：', '、',  # Chinese punctuation
+        ',', '.', '!', '?', ';', ':',  # English punctuation
+        '-', '—', '…', '~', '～',  # Dashes and ellipsis
+        '（', '）', '(', ')',  # Parentheses
+        '[', ']', '【', '】',  # Brackets
+        '《', '》', '〈', '〉',  # Angle brackets
+        '「', '」', '『', '』',  # Japanese quotes
+        '"', '"', ''', ''',  # Smart quotes
+        '"', "'", '`',  # Regular quotes
+        '/', '|', '\\',  # Slashes
+    ]
+    
+    # Create pattern by escaping each character
+    escaped_marks = [re.escape(mark) for mark in punctuation_marks]
+    punctuation_pattern = '[' + ''.join(escaped_marks) + ']'
+    
+    # Replace all punctuation marks with newlines
+    processed_text = re.sub(punctuation_pattern, '\n', text)
+    
+    # Remove multiple consecutive newlines and trim
+    processed_text = re.sub(r'\n+', '\n', processed_text)
+    processed_text = processed_text.strip()
+    
+    return processed_text
+
 # ---------- IO helpers ----------
 
 def read_text(path: Path) -> str:
@@ -56,10 +92,20 @@ def strip_code_fences(s: str) -> str:
     s = s.strip()
     if s.startswith("```"):
         s = re.sub(r"^```(?:json)?\s*|\s*```$", "", s, flags=re.DOTALL)
+    # Also clean up any trailing spaces on each line which can cause JSON parsing issues
+    lines = s.split('\n')
+    cleaned_lines = [line.rstrip() for line in lines]
+    s = '\n'.join(cleaned_lines)
     return s
 
 def normalize_quotes(s: str) -> str:
-    return s.replace("“", '"').replace("”", '"').replace("’", "'").replace("‘", "'")
+    # Don't normalize quotes that are inside JSON string values
+    # Only normalize smart quotes to regular quotes, but leave Chinese quotes as-is
+    # since they don't conflict with JSON syntax
+    s = s.replace(""", '"').replace(""", '"').replace("'", "'").replace("'", "'")
+    # Don't replace Chinese quotation marks as they're valid inside JSON strings
+    # s = s.replace(""", '"').replace(""", '"')  # Commented out - keep Chinese quotes
+    return s
 
 def escape_newlines_in_strings(s: str) -> str:
     out, in_str, esc = [], False, False
@@ -105,9 +151,22 @@ def robust_parse_json(raw: str) -> Any:
     s = escape_newlines_in_strings(s)
     try:
         return json.loads(s)
-    except Exception:
-        s2 = trim_to_complete_json(s)
-        return json.loads(s2)
+    except json.JSONDecodeError as e:
+        # Try trimming to complete JSON
+        try:
+            s2 = trim_to_complete_json(s)
+            return json.loads(s2)
+        except Exception:
+            # If still failing, try one more time with aggressive cleaning
+            # Remove any trailing content after the last }
+            last_brace = s.rfind('}')
+            if last_brace != -1:
+                s3 = s[:last_brace + 1]
+                try:
+                    return json.loads(s3)
+                except Exception:
+                    pass
+            raise e
 
 # ---------- Streaming printer ----------
 
@@ -281,6 +340,9 @@ def main():
     while made < total_needed:
         k = min(per_req, total_needed - made)  # last batch may be smaller
         batch_index += 1
+        
+        # Debug output
+        print(f"\n[Debug] Batch {batch_index}: made={made}, total_needed={total_needed}, k={k}")
 
         system_prompt = system_prompt_multi if k > 1 else system_prompt_single
         user_prompt = build_user_prompt(batch_index-1, k)
@@ -336,9 +398,13 @@ def main():
                 variants = data["variants"]
 
         # write files
+        print(f"\n[Debug] Writing {len(variants)} variants...")
         for item in variants:
             global_variant_index += 1
             tts_out = (item.get("tts") or "").strip()
+            # Preprocess TTS text to convert punctuation to newlines
+            tts_out = preprocess_tts_text(tts_out)
+            
             cap_out = (item.get("caption") or "").strip()
             if tags:
                 cap_out = (cap_out + "\n" + " ".join(tags)).strip()
@@ -350,6 +416,7 @@ def main():
             print(f"✓ Caption: {cap_dir / f'variant_{idx}_caption.txt'}")
 
         made += len(variants)
+        print(f"[Debug] Total made so far: {made}")
 
 if __name__ == "__main__":
     main()
