@@ -1,3 +1,21 @@
-MoneyPrinterPlus-windows\final
-publish\*
-publish\
+# MoneyPrinterPlus-windows generated files
+MoneyPrinterPlus-windows/final/
+MoneyPrinterPlus-windows/work/
+MoneyPrinterPlus-windows/__pycache__/
+MoneyPrinterPlus-windows/**/__pycache__/
+MoneyPrinterPlus-windows/venv/
+MoneyPrinterPlus-windows/config/config.yml
+MoneyPrinterPlus-windows/config/session.yml
+MoneyPrinterPlus-windows/.streamlit/secrets.toml
+
+# aigc files
+aigc/publish/
+aigc/__pycache__/
+
+# General
+publish/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.log
