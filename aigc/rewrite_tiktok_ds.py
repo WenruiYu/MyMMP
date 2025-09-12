@@ -32,7 +32,7 @@ def preprocess_tts_text(text):
         '《》〈〉'  # Angle brackets
         '「」『』'  # Japanese quotes
         '""'''  # Smart quotes
-        '"\''  # Regular quotes
+        '"'  # Regular double quotes (removed single quote to preserve contractions/possessives)
         '`/|\\'  # Other marks
     )
     
