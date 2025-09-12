@@ -258,13 +258,29 @@ def add_subtitles(video_file, subtitle_file, font_name='Songti TC Bold', font_si
                   outline_colour='#FFFFFF', margin_v=16, margin_l=4, margin_r=4, border_style=1, outline=0, alignment=2,
                   shadow=0, spacing=2):
     output_file = generate_temp_filename(video_file)
-    primary_colour = f"&H{primary_colour[1:]}&"
-    outline_colour = f"&H{outline_colour[1:]}&"
+    # Convert color from #RRGGBB to &HBBGGRR& format (ASS/SSA subtitle format)
+    def convert_color(color):
+        # Remove # and get RGB values
+        rgb = color.lstrip('#')
+        # Convert to BGR order and add ASS format
+        return f"&H{rgb[4:6]}{rgb[2:4]}{rgb[0:2]}&"
+    
+    primary_colour = convert_color(primary_colour)
+    outline_colour = convert_color(outline_colour)
     # windows路径需要特殊处理
     if platform.system() == "Windows":
         subtitle_file = subtitle_file.replace("\\", "\\\\\\\\")
         subtitle_file = subtitle_file.replace(":", "\\\\:")
     vf_text = f"subtitles={subtitle_file}:fontsdir={font_dir}:force_style='Fontname={font_name},Fontsize={font_size},Alignment={alignment},MarginV={margin_v},MarginL={margin_l},MarginR={margin_r},BorderStyle={border_style},Outline={outline},Shadow={shadow},PrimaryColour={primary_colour},OutlineColour={outline_colour},Spacing={spacing}'"
+    
+    # Debug output
+    print(f"[DEBUG] Subtitle parameters:")
+    print(f"  Font: {font_name}, Size: {font_size}")
+    print(f"  Primary color: {primary_colour}")
+    print(f"  Outline color: {outline_colour}")
+    print(f"  Outline width: {outline}")
+    print(f"  Border style: {border_style}")
+    
     # 构建FFmpeg命令
     ffmpeg_cmd = [
         'ffmpeg',

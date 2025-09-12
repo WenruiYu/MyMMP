@@ -47,30 +47,33 @@ def preprocess_tts_text(text):
         return text
     
     # Define all common punctuation marks including Chinese and English punctuation
-    # List all punctuation marks we want to replace
-    punctuation_marks = [
-        '，', '。', '！', '？', '；', '：', '、',  # Chinese punctuation
-        ',', '.', '!', '?', ';', ':',  # English punctuation
-        '-', '—', '…', '~', '～',  # Dashes and ellipsis
-        '（', '）', '(', ')',  # Parentheses
-        '[', ']', '【', '】',  # Brackets
-        '《', '》', '〈', '〉',  # Angle brackets
-        '「', '」', '『', '』',  # Japanese quotes
-        '"', '"', ''', ''',  # Smart quotes
-        '"', "'", '`',  # Regular quotes
-        '/', '|', '\\',  # Slashes
-    ]
+    # Using a single string to avoid any spacing issues
+    punctuation_marks = (
+        '，。！？；：、'  # Chinese punctuation
+        ',.!?;:'  # English punctuation  
+        '-—…~～'  # Dashes and ellipsis
+        '（）()'  # Parentheses
+        '[]【】'  # Brackets
+        '《》〈〉'  # Angle brackets
+        '「」『』'  # Japanese quotes
+        '""'''  # Smart quotes
+        '"\''  # Regular quotes
+        '`/|\\'  # Other marks
+    )
     
-    # Create pattern by escaping each character
-    escaped_marks = [re.escape(mark) for mark in punctuation_marks]
-    punctuation_pattern = '[' + ''.join(escaped_marks) + ']'
+    # Create pattern - escape special regex characters
+    punctuation_pattern = '[' + re.escape(punctuation_marks) + ']'
     
     # Replace all punctuation marks with newlines
     processed_text = re.sub(punctuation_pattern, '\n', text)
     
-    # Remove multiple consecutive newlines and trim
-    processed_text = re.sub(r'\n+', '\n', processed_text)
-    processed_text = processed_text.strip()
+    # Split into lines and clean each line
+    lines = processed_text.split('\n')
+    # Remove empty lines and strip whitespace from each line
+    cleaned_lines = [line.strip() for line in lines if line.strip()]
+    
+    # Join back with newlines
+    processed_text = '\n'.join(cleaned_lines)
     
     return processed_text
 

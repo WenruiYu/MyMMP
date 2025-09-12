@@ -77,6 +77,7 @@
   "subtitle color": "字幕颜色",
   "subtitle border color": "字幕边框颜色",
   "subtitle border width": "字幕边框宽度",
+  "Set to 0 to disable border, or 1-4 for border thickness": "设为0禁用边框，或1-4设置边框粗细",
   "subtitle vertical margin": "字幕垂直边距",
   "Distance from edge in pixels. For bottom 1/4 position, use ~120 for 480p, ~180 for 720p, ~270 for 1080p": "距离边缘的像素值。底部1/4位置建议：480p用~120，720p用~180，1080p用~270",
 

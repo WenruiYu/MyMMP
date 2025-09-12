@@ -369,8 +369,9 @@ with subtitle_container:
     with llm_columns[2]:
         st.color_picker(label=tr("subtitle border color"), key="subtitle_border_color", value="#000000")
     with llm_columns[3]:
-        st.slider(label=tr("subtitle border width"), min_value=0, value=0, max_value=4, step=1,
-                  key="subtitle_border_width")
+        st.slider(label=tr("subtitle border width"), min_value=0, value=2, max_value=4, step=1,
+                  key="subtitle_border_width",
+                  help=tr("Set to 0 to disable border, or 1-4 for border thickness"))
     
     # Add subtitle margin control
     st.slider(label=tr("subtitle vertical margin"), 
