@@ -92,7 +92,30 @@ def generate_video_for_mix(video_generator):
     save_session_state_to_yaml()
     videos_count = st.session_state.get('videos_count')
     if videos_count is not None:
+        # Create batch folder with timestamp
+        from tools.utils import random_with_system_time
+        import os
+        from datetime import datetime
+        
+        # Use datetime for a more readable folder name
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        batch_folder_name = f"batch_{timestamp}"
+        
+        # Get the final directory path
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        final_dir = os.path.abspath(os.path.join(script_dir, "../final"))
+        batch_folder_path = os.path.join(final_dir, batch_folder_name)
+        
+        # Create the batch folder
+        os.makedirs(batch_folder_path, exist_ok=True)
+        
+        # Store batch folder path and reset video counter in session state
+        st.session_state['batch_folder_path'] = batch_folder_path
+        st.session_state['batch_video_counter'] = 0
+        
         for i in range(int(videos_count)):
+            # Increment video counter for this batch
+            st.session_state['batch_video_counter'] += 1
             main_generate_ai_video_for_mix(video_generator)
 
 
@@ -451,11 +474,26 @@ with video_generator:
     st.button(label=tr("Generate Video Button"), type="primary", on_click=generate_video_for_mix,
               args=(video_generator,))
 result_video_file = st.session_state.get("result_video_file")
+batch_folder_path = st.session_state.get("batch_folder_path")
+
+# Show batch folder info if available
+if batch_folder_path and os.path.exists(batch_folder_path):
+    st.success(tr("Videos saved in batch folder: ") + batch_folder_path)
+    
+    # List videos in the batch folder
+    video_files = sorted([f for f in os.listdir(batch_folder_path) if f.endswith('.mp4')])
+    if video_files:
+        st.info(tr("Generated videos: ") + ", ".join(video_files))
+
 if result_video_file:
     # Check if the file still exists before trying to display it
     import os
     if os.path.exists(result_video_file):
         st.video(result_video_file)
+        # Show the video name if it's in a batch
+        if batch_folder_path and batch_folder_path in result_video_file:
+            video_name = os.path.basename(result_video_file)
+            st.caption(tr("Video: ") + video_name)
     else:
         # Clear the session state if file doesn't exist
         st.session_state["result_video_file"] = None

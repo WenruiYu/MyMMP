@@ -150,6 +150,9 @@
 
   "Will create approximately {estimated_segments} video segments of {min_seg}-{max_seg} seconds each to reach {target_len} seconds total.": "将创建大约{estimated_segments}个视频片段，每个片段时长{min_seg}-{max_seg}秒，总共{target_len}秒。",
   "The video file no longer exists. It may have been moved or deleted.": "视频文件不存在。可能已被移动或删除。",
+  "Videos saved in batch folder: ": "视频已保存到批次文件夹：",
+  "Generated videos: ": "已生成视频：",
+  "Video: ": "视频：",
 
   "Video Auto Publish": "视频自动发布工具",
   "Video Auto Public Config": "视频自动发布配置",

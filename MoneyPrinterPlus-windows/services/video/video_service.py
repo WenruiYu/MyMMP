@@ -577,8 +577,17 @@ class VideoService:
 
     def generate_video_with_audio(self):
         # 生成视频和音频的代码
-        random_name = str(random_with_system_time())
-        merge_video = os.path.join(video_output_dir, "final-" + random_name + ".mp4")
+        # Check if we're in a batch generation mode
+        batch_folder_path = st.session_state.get('batch_folder_path')
+        batch_video_counter = st.session_state.get('batch_video_counter')
+        
+        if batch_folder_path and batch_video_counter is not None:
+            # Use batch folder and sequential naming
+            merge_video = os.path.join(batch_folder_path, f"{batch_video_counter}.mp4")
+        else:
+            # Fall back to original naming for non-batch generation
+            random_name = str(random_with_system_time())
+            merge_video = os.path.join(video_output_dir, "final-" + random_name + ".mp4")
         temp_video_filelist_path = os.path.join(video_output_dir, 'generate_video_with_audio_file_list.txt')
 
         # 创建包含所有视频文件的文本文件
