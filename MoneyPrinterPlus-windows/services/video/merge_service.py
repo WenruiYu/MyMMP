@@ -551,11 +551,20 @@ class VideoMergeService:
                                      '-y',
                                      merge_video]
 
-        subprocess.run(ffmpeg_concat_cmd)
+        result = subprocess.run(ffmpeg_concat_cmd, capture_output=True, text=True)
+        if result.returncode != 0:
+            print(f"FFmpeg error: {result.stderr}")
+            raise Exception(f"Failed to create video: {result.stderr}")
+        
         # 删除临时文件
         os.remove(temp_video_filelist_path)
 
         # 添加背景音乐
         if self.enable_background_music and self.background_music:
             add_background_music(merge_video, self.background_music, self.background_music_volume)
+        
+        # Verify the final video exists
+        if not os.path.exists(merge_video):
+            raise Exception(f"Final video file was not created: {merge_video}")
+            
         return merge_video

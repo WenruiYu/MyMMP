@@ -93,7 +93,6 @@ def generate_video_for_mix(video_generator):
     videos_count = st.session_state.get('videos_count')
     if videos_count is not None:
         for i in range(int(videos_count)):
-            print(i)
             main_generate_ai_video_for_mix(video_generator)
 
 
@@ -453,4 +452,11 @@ with video_generator:
               args=(video_generator,))
 result_video_file = st.session_state.get("result_video_file")
 if result_video_file:
-    st.video(result_video_file)
+    # Check if the file still exists before trying to display it
+    import os
+    if os.path.exists(result_video_file):
+        st.video(result_video_file)
+    else:
+        # Clear the session state if file doesn't exist
+        st.session_state["result_video_file"] = None
+        st.warning(tr("The video file no longer exists. It may have been moved or deleted."))

@@ -149,6 +149,7 @@
   "Enable this to merge videos without TTS narration. Videos will be merged with their original durations or default duration.": "开启此选项，合并视频时将跳过TTS配音。视频将使用原始时长或默认时长。",
 
   "Will create approximately {estimated_segments} video segments of {min_seg}-{max_seg} seconds each to reach {target_len} seconds total.": "将创建大约{estimated_segments}个视频片段，每个片段时长{min_seg}-{max_seg}秒，总共{target_len}秒。",
+  "The video file no longer exists. It may have been moved or deleted.": "视频文件不存在。可能已被移动或删除。",
 
   "Video Auto Publish": "视频自动发布工具",
   "Video Auto Public Config": "视频自动发布配置",
