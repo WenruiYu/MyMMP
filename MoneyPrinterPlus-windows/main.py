@@ -181,20 +181,32 @@ def main_generate_video_dubbing():
 
 def main_generate_video_dubbing_for_mix():
     print("main_generate_video_dubbing_for_mix begin")
-    if st.session_state.get("audio_type") == "remote":
-        print("use remote audio")
-        audio_service = get_audio_service()
-        audio_rate = get_audio_rate()
-        audio_output_file_list, video_dir_list = get_audio_and_video_list(audio_service, audio_rate)
+    
+    # Check if TTS is skipped
+    skip_tts = st.session_state.get("skip_tts", False)
+    
+    if skip_tts:
+        print("TTS is skipped, no audio generation")
+        # Get video directories without audio generation
+        from services.hunjian.hunjian_service import get_session_video_scene_text
+        video_dir_list, _ = get_session_video_scene_text()
+        audio_output_file_list = []  # Empty audio list
     else:
-        print("use local audio")
-        selected_local_audio_tts_provider = my_config['audio'].get('local_tts', {}).get('provider', '')
-        audio_service = None
-        if selected_local_audio_tts_provider == "chatTTS":
-            audio_service = ChatTTSAudioService()
-        if selected_local_audio_tts_provider == "GPTSoVITS":
-            audio_service = GPTSoVITSAudioService()
-        audio_output_file_list, video_dir_list = get_audio_and_video_list_local(audio_service)
+        if st.session_state.get("audio_type") == "remote":
+            print("use remote audio")
+            audio_service = get_audio_service()
+            audio_rate = get_audio_rate()
+            audio_output_file_list, video_dir_list = get_audio_and_video_list(audio_service, audio_rate)
+        else:
+            print("use local audio")
+            selected_local_audio_tts_provider = my_config['audio'].get('local_tts', {}).get('provider', '')
+            audio_service = None
+            if selected_local_audio_tts_provider == "chatTTS":
+                audio_service = ChatTTSAudioService()
+            if selected_local_audio_tts_provider == "GPTSoVITS":
+                audio_service = GPTSoVITSAudioService()
+            audio_output_file_list, video_dir_list = get_audio_and_video_list_local(audio_service)
+    
     st.session_state["audio_output_file_list"] = audio_output_file_list
     st.session_state["video_dir_list"] = video_dir_list
     print("main_generate_video_dubbing_for_mix end")
@@ -377,20 +389,78 @@ def main_generate_ai_video_for_mix(video_generator):
     print("main_generate_ai_video_for_mix begin:")
     # Set flag to indicate this is a mix video
     st.session_state['is_mix_video'] = True
+    
+    # Check if TTS is skipped
+    skip_tts = st.session_state.get("skip_tts", False)
+    
     with video_generator:
         st_area = st.status(tr("Generate Video in process..."), expanded=True)
         with st_area as status:
-            # Generate Video Dubbing
+            # Generate Video Dubbing (or skip if TTS is disabled)
             start_time = time.time()
-            st.write(tr("Generate Video Dubbing..."))
+            if not skip_tts:
+                st.write(tr("Generate Video Dubbing..."))
             main_generate_video_dubbing_for_mix()
             dubbing_time = time.time() - start_time
-            st.write(f"✓ {tr('Generate Video Dubbing...')} ({dubbing_time:.1f}s)")
+            if not skip_tts:
+                st.write(f"✓ {tr('Generate Video Dubbing...')} ({dubbing_time:.1f}s)")
             
             # Video normalize
             start_time = time.time()
             st.write(tr("Video normalize..."))
             video_dir_list = get_must_session_option("video_dir_list", "请选择视频目录路径")
+            
+            if skip_tts:
+                # Use VideoMergeService for video-only mixing
+                from services.video.merge_service import get_videos_for_target_length, VideoMergeService
+                from services.hunjian.hunjian_service import get_session_video_scene_text
+                
+                # Get target video length and segment settings
+                target_length = st.session_state.get("target_video_length", 60)  # Default 60 seconds
+                min_segment_length = st.session_state.get("video_segment_min_length", 5)
+                max_segment_length = st.session_state.get("video_segment_max_length", 10)
+                
+                # Get all video directories
+                video_dir_list, _ = get_session_video_scene_text()
+                
+                # Get video segments for target length
+                video_segments = get_videos_for_target_length(
+                    video_dir_list, 
+                    target_length, 
+                    min_segment_length, 
+                    max_segment_length
+                )
+                
+                if not video_segments:
+                    st.error("No videos found in the specified directories")
+                    st.stop()
+                
+                # Create video service with empty list (we'll use segments instead)
+                video_service = VideoMergeService([])
+                video_service.set_video_segments(video_segments)
+                
+                print(f"normalize video (no audio) - {len(video_segments)} segments for {target_length}s video")
+                final_video_file_list = video_service.normalize_video_segments()
+                normalize_time = time.time() - start_time
+                st.write(f"✓ {tr('Video normalize...')} ({normalize_time:.1f}s)")
+                
+                # Generate Video without audio
+                start_time = time.time()
+                st.write(tr("Generate Video..."))
+                video_file = video_service.generate_video_with_bg_music()
+                print("final file without audio:", video_file)
+                video_gen_time = time.time() - start_time
+                st.write(f"✓ {tr('Generate Video...')} ({video_gen_time:.1f}s)")
+                
+                # No subtitles when TTS is skipped
+                st.session_state["result_video_file"] = video_file
+                st.write("—" * 40)
+                total_time = dubbing_time + normalize_time + video_gen_time
+                st.write(f"**{tr('Total time')}: {total_time:.1f}s**")
+                status.update(label=f"{tr('Generate Video completed!')} ({total_time:.1f}s)", state="complete", expanded=False)
+                return
+            
+            # Original flow for when TTS is enabled
             audio_file_list = get_must_session_option("audio_output_file_list", "请先生成配音文件列表")
 
             video_mix_servie = VideoMixService()

@@ -34,6 +34,7 @@ from services.hunjian.hunjian_service import get_session_video_scene_text, get_v
 from services.video.texiao_service import gen_filter
 from services.video.video_service import DEFAULT_DURATION, get_image_info, get_video_duration, get_video_info, \
     get_video_length_list, add_background_music
+from services.video.overlay_service import VideoOverlayService
 from tools.file_utils import generate_temp_filename
 from tools.tr_utils import tr
 from tools.utils import run_ffmpeg_command, random_with_system_time
@@ -54,7 +55,10 @@ work_output_dir = os.path.abspath(work_output_dir)
 
 def merge_generate_subtitle(video_scene_video_list, video_scene_text_list):
     enable_subtitles = st.session_state.get("enable_subtitles")
-    if enable_subtitles and video_scene_text_list is not None:
+    skip_tts = st.session_state.get("skip_tts", False)
+    
+    # Only generate subtitles if subtitles are enabled, TTS is not skipped, and text is available
+    if enable_subtitles and not skip_tts and video_scene_text_list is not None:
         st.write(tr("Add Subtitles..."))
         for video_file, scene_text in zip(video_scene_video_list, video_scene_text_list):
             if scene_text is not None and scene_text != "":
@@ -132,6 +136,100 @@ def get_video_scene_video_list(video_dir_list):
     return video_scene_video_list
 
 
+def get_all_videos_for_mixing(video_dir_list):
+    """Get all videos from directories for mixing without TTS"""
+    all_video_list = []
+    for video_dir in video_dir_list:
+        if video_dir is not None and os.path.exists(video_dir):
+            # Get all video and image files from the directory
+            media_files = [os.path.join(video_dir, f) for f in os.listdir(video_dir) if
+                           f.lower().endswith(('.jpg', '.jpeg', '.png', '.mp4', '.mov'))]
+            
+            # Shuffle to randomize order
+            random.shuffle(media_files)
+            
+            # Add all files to the list
+            all_video_list.extend(media_files)
+    
+    return all_video_list
+
+
+def get_videos_for_target_length(video_dir_list, target_length, min_segment_length=5, max_segment_length=10):
+    """
+    Get videos and segment information to achieve target length
+    
+    Args:
+        video_dir_list: List of video directories
+        target_length: Target video length in seconds
+        min_segment_length: Minimum segment length
+        max_segment_length: Maximum segment length
+    
+    Returns:
+        List of tuples (video_path, start_time, duration)
+    """
+    # Get all available videos
+    all_videos = []
+    for video_dir in video_dir_list:
+        if video_dir is not None and os.path.exists(video_dir):
+            media_files = [os.path.join(video_dir, f) for f in os.listdir(video_dir) if
+                           f.lower().endswith(('.jpg', '.jpeg', '.png', '.mp4', '.mov'))]
+            all_videos.extend(media_files)
+    
+    if not all_videos:
+        return []
+    
+    video_segments = []
+    current_total_length = 0
+    
+    print(f"Creating video segments for target length: {target_length}s")
+    print(f"Segment length range: {min_segment_length}s - {max_segment_length}s")
+    print(f"Available videos: {len(all_videos)}")
+    
+    while current_total_length < target_length:
+        # Randomly select a video
+        selected_video = random.choice(all_videos)
+        
+        # Determine segment length
+        remaining_length = target_length - current_total_length
+        
+        # If this is the last segment, use the exact remaining length
+        if remaining_length <= max_segment_length:
+            segment_length = remaining_length
+        else:
+            # Random length between min and max
+            segment_length = random.uniform(min_segment_length, 
+                                          min(max_segment_length, remaining_length))
+        
+        # For images, use the segment length directly
+        if selected_video.lower().endswith(('.jpg', '.jpeg', '.png')):
+            video_segments.append((selected_video, 0, segment_length))
+        else:
+            # For videos, get actual duration and select a random start point
+            video_duration = get_video_duration(selected_video)
+            if video_duration > 0:
+                # If video is shorter than desired segment, use full video
+                if video_duration <= segment_length:
+                    video_segments.append((selected_video, 0, video_duration))
+                    segment_length = video_duration
+                else:
+                    # Random start point that allows for the segment length
+                    max_start = video_duration - segment_length
+                    start_time = random.uniform(0, max_start) if max_start > 0 else 0
+                    video_segments.append((selected_video, start_time, segment_length))
+        
+        current_total_length += segment_length
+        # Get start_time for display (0 for images)
+        display_start = 0
+        if not selected_video.lower().endswith(('.jpg', '.jpeg', '.png')) and len(video_segments) > 0:
+            display_start = video_segments[-1][1]  # Get start_time from the last added segment
+        
+        print(f"  Added segment {len(video_segments)}: {os.path.basename(selected_video)} "
+              f"[{display_start:.1f}s - {segment_length:.1f}s] Total: {current_total_length:.1f}s")
+    
+    print(f"Created {len(video_segments)} segments with total length: {current_total_length:.1f}s")
+    return video_segments
+
+
 def random_video_from_dir(video_dir):
     # 获取媒体文件夹中的所有图片和视频文件
     media_files = [os.path.join(video_dir, f) for f in os.listdir(video_dir) if
@@ -158,6 +256,12 @@ class VideoMergeService:
         self.target_width, self.target_height = st.session_state["video_size"].split('x')
         self.target_width = int(self.target_width)
         self.target_height = int(self.target_height)
+        
+        # Initialize overlay service
+        self.overlay_service = VideoOverlayService()
+        
+        # For segment-based processing
+        self.video_segments = None
 
         self.enable_background_music = st.session_state["enable_background_music"]
         # Check if random selection is enabled
@@ -184,7 +288,15 @@ class VideoMergeService:
         self.default_duration = DEFAULT_DURATION
 
     def normalize_video(self):
+        # Validate overlay settings first
+        if self.overlay_service.is_enabled():
+            is_valid, error_msg = self.overlay_service.validate_overlay_settings()
+            if not is_valid:
+                st.error(error_msg)
+                st.stop()
+        
         return_video_list = []
+        video_index = 0
         for media_file in self.video_list:
             # 如果当前文件是图片，添加转换为视频的命令
             if media_file.lower().endswith(('.jpg', '.jpeg', '.png')):
@@ -201,7 +313,8 @@ class VideoMergeService:
                         '-t', str(self.default_duration),
                         '-r', str(self.fps),
                         '-vf',
-                        f'scale=-1:{self.target_height}:force_original_aspect_ratio=1,crop={self.target_width}:{self.target_height}:(ow-iw)/2:(oh-ih)/2'
+                        f'scale=-1:{self.target_height}:force_original_aspect_ratio=1,crop={self.target_width}:{self.target_height}:(ow-iw)/2:(oh-ih)/2',
+                        '-an',  # Remove audio
                         '-y', output_name]
                 else:
                     ffmpeg_cmd = [
@@ -212,10 +325,21 @@ class VideoMergeService:
                         '-t', str(self.default_duration),
                         '-r', str(self.fps),
                         '-vf',
-                        f'scale={self.target_width}:-1:force_original_aspect_ratio=1,crop={self.target_width}:{self.target_height}:(ow-iw)/2:(oh-ih)/2'
+                        f'scale={self.target_width}:-1:force_original_aspect_ratio=1,crop={self.target_width}:{self.target_height}:(ow-iw)/2:(oh-ih)/2',
+                        '-an',  # Remove audio
                         '-y', output_name]
                 print(" ".join(ffmpeg_cmd))
                 subprocess.run(ffmpeg_cmd, check=True, capture_output=True)
+                
+                # Apply overlay if enabled
+                if self.overlay_service.is_enabled():
+                    overlay_output = generate_temp_filename(output_name, "_overlay.mp4", work_output_dir)
+                    if self.overlay_service.apply_overlay_to_video(output_name, overlay_output, video_index):
+                        # Remove the non-overlayed video and use the overlayed one
+                        if os.path.exists(output_name):
+                            os.remove(output_name)
+                        output_name = overlay_output
+                
                 return_video_list.append(output_name)
 
             else:
@@ -233,6 +357,7 @@ class VideoMergeService:
                         f"scale=-1:{self.target_height}:force_original_aspect_ratio=1,crop={self.target_width}:{self.target_height}:(ow-iw)/2:(oh-ih)/2",
                         # 设置视频滤镜来调整分辨率
                         # '-vf', f'crop={self.target_width}:{self.target_height}:(ow-iw)/2:(oh-ih)/2',
+                        '-an',  # Remove audio
                         '-y',
                         output_name  # 输出文件
                     ]
@@ -245,13 +370,129 @@ class VideoMergeService:
                         f"scale={self.target_width}:-1:force_original_aspect_ratio=1,crop={self.target_width}:{self.target_height}:(ow-iw)/2:(oh-ih)/2",
                         # 设置视频滤镜来调整分辨率
                         # '-vf', f'crop={self.target_width}:{self.target_height}:(ow-iw)/2:(oh-ih)/2',
+                        '-an',  # Remove audio
                         '-y',
                         output_name  # 输出文件
                     ]
                 # 执行FFmpeg命令
                 print(" ".join(command))
                 run_ffmpeg_command(command)
+                
+                # Apply overlay if enabled
+                if self.overlay_service.is_enabled():
+                    overlay_output = generate_temp_filename(output_name, "_overlay.mp4", work_output_dir)
+                    if self.overlay_service.apply_overlay_to_video(output_name, overlay_output, video_index):
+                        # Remove the non-overlayed video and use the overlayed one
+                        if os.path.exists(output_name):
+                            os.remove(output_name)
+                        output_name = overlay_output
+                
                 return_video_list.append(output_name)
+            
+            video_index += 1
+            
+        self.video_list = return_video_list
+        return return_video_list
+    
+    def set_video_segments(self, video_segments):
+        """Set video segments for segment-based processing"""
+        self.video_segments = video_segments
+    
+    def normalize_video_segments(self):
+        """Normalize video segments with specific start times and durations"""
+        if not self.video_segments:
+            return self.normalize_video()
+        
+        # Validate overlay settings first
+        if self.overlay_service.is_enabled():
+            is_valid, error_msg = self.overlay_service.validate_overlay_settings()
+            if not is_valid:
+                st.error(error_msg)
+                st.stop()
+        
+        return_video_list = []
+        video_index = 0
+        
+        for video_path, start_time, duration in self.video_segments:
+            output_name = generate_temp_filename(video_path, f"_seg{video_index}.mp4", work_output_dir)
+            
+            # Handle images
+            if video_path.lower().endswith(('.jpg', '.jpeg', '.png')):
+                # Convert image to video with specified duration
+                img_width, img_height = get_image_info(video_path)
+                if img_width / img_height > self.target_width / self.target_height:
+                    ffmpeg_cmd = [
+                        'ffmpeg',
+                        '-loop', '1',
+                        '-i', video_path,
+                        '-c:v', 'h264',
+                        '-t', str(duration),
+                        '-r', str(self.fps),
+                        '-vf',
+                        f'scale=-1:{self.target_height}:force_original_aspect_ratio=1,crop={self.target_width}:{self.target_height}:(ow-iw)/2:(oh-ih)/2',
+                        '-an',  # Remove audio
+                        '-y', output_name]
+                else:
+                    ffmpeg_cmd = [
+                        'ffmpeg',
+                        '-loop', '1',
+                        '-i', video_path,
+                        '-c:v', 'h264',
+                        '-t', str(duration),
+                        '-r', str(self.fps),
+                        '-vf',
+                        f'scale={self.target_width}:-1:force_original_aspect_ratio=1,crop={self.target_width}:{self.target_height}:(ow-iw)/2:(oh-ih)/2',
+                        '-an',  # Remove audio
+                        '-y', output_name]
+                
+                print(" ".join(ffmpeg_cmd))
+                subprocess.run(ffmpeg_cmd, check=True, capture_output=True)
+            else:
+                # Handle videos with specific start time and duration
+                video_width, video_height = get_video_info(video_path)
+                
+                if video_width / video_height > self.target_width / self.target_height:
+                    command = [
+                        'ffmpeg',
+                        '-ss', str(start_time),  # Start time
+                        '-i', video_path,        # Input file
+                        '-t', str(duration),     # Duration
+                        '-r', str(self.fps),     # Frame rate
+                        '-vf',
+                        f"scale=-1:{self.target_height}:force_original_aspect_ratio=1,crop={self.target_width}:{self.target_height}:(ow-iw)/2:(oh-ih)/2",
+                        '-an',  # Remove audio
+                        '-y',
+                        output_name
+                    ]
+                else:
+                    command = [
+                        'ffmpeg',
+                        '-ss', str(start_time),  # Start time
+                        '-i', video_path,        # Input file
+                        '-t', str(duration),     # Duration
+                        '-r', str(self.fps),     # Frame rate
+                        '-vf',
+                        f"scale={self.target_width}:-1:force_original_aspect_ratio=1,crop={self.target_width}:{self.target_height}:(ow-iw)/2:(oh-ih)/2",
+                        '-an',  # Remove audio
+                        '-y',
+                        output_name
+                    ]
+                
+                print(" ".join(command))
+                run_ffmpeg_command(command)
+            
+            # Apply overlay if enabled
+            if self.overlay_service.is_enabled():
+                overlay_output = generate_temp_filename(output_name, "_overlay.mp4", work_output_dir)
+                if self.overlay_service.apply_overlay_to_video(output_name, overlay_output, video_index):
+                    # Remove the non-overlayed video and use the overlayed one
+                    if os.path.exists(output_name):
+                        os.remove(output_name)
+                    output_name = overlay_output
+            
+            return_video_list.append(output_name)
+            video_index += 1
+        
         self.video_list = return_video_list
         return return_video_list
 
@@ -281,20 +522,34 @@ class VideoMergeService:
         if self.enable_video_transition_effect and len(self.video_list) > 1:
             video_length_list = get_video_length_list(self.video_list)
             print("启动转场特效")
+            
+            # Check if the videos have audio
+            # For skip_tts mode, videos won't have audio
+            has_audio = not st.session_state.get("skip_tts", False)
+            
             zhuanchang_txt = gen_filter(video_length_list, None, None,
                                         self.video_transition_effect_type,
                                         self.video_transition_effect_value,
                                         self.video_transition_effect_duration,
-                                        True)
+                                        has_audio)
 
             # File inputs from the list
             files_input = [['-i', f] for f in self.video_list]
-            ffmpeg_concat_cmd = ['ffmpeg', *itertools.chain(*files_input),
-                                 '-filter_complex', zhuanchang_txt,
-                                 '-map', '[video]',
-                                 '-map', '[audio]',
-                                 '-y',
-                                 merge_video]
+            
+            # Build ffmpeg command based on whether audio exists
+            if has_audio:
+                ffmpeg_concat_cmd = ['ffmpeg', *itertools.chain(*files_input),
+                                     '-filter_complex', zhuanchang_txt,
+                                     '-map', '[video]',
+                                     '-map', '[audio]',
+                                     '-y',
+                                     merge_video]
+            else:
+                ffmpeg_concat_cmd = ['ffmpeg', *itertools.chain(*files_input),
+                                     '-filter_complex', zhuanchang_txt,
+                                     '-map', '[video]',
+                                     '-y',
+                                     merge_video]
 
         subprocess.run(ffmpeg_concat_cmd)
         # 删除临时文件

@@ -121,26 +121,50 @@ with mix_video_container:
         st.button(label=tr("Delete Extra Scene"), type="primary", on_click=delete_scene_for_mix,
                   args=(video_scene_container,))
     
-    # Single TTS text file for all scenes
-    st.text_input(label=tr("TTS Text File"), 
-                  placeholder=tr("Please input TTS text file path (will be used for all scenes)"),
-                  help=tr("One Line Text For One Scene, UTF-8 encoding. This file will be used for all video scenes."),
-                  key="tts_text_file")
+    # Option to skip TTS
+    st.checkbox(label=tr("Skip TTS (Mix videos without narration)"), 
+                key="skip_tts",
+                value=False,
+                help=tr("Enable this to mix videos without TTS narration. Videos will be mixed with their original durations or default duration."))
+    
+    # Target video length when TTS is skipped
+    if st.session_state.get("skip_tts", False):
+        st.slider(label=tr("Target video length (seconds)"), 
+                  min_value=10, 
+                  value=60, 
+                  max_value=300, 
+                  step=5,
+                  key="target_video_length",
+                  help=tr("The desired length of the final mixed video. Videos will be randomly selected and cut to achieve this length."))
+        
+        # Show how the length relates to segment settings
+        min_seg = st.session_state.get("video_segment_min_length", 5)
+        max_seg = st.session_state.get("video_segment_max_length", 10)
+        target_len = st.session_state.get("target_video_length", 60)
+        estimated_segments = int(target_len / ((min_seg + max_seg) / 2))
+        st.info(f"Will create approximately {estimated_segments} video segments of {min_seg}-{max_seg} seconds each to reach {target_len} seconds total.")
+    else:
+        # Single TTS text file for all scenes (only show if TTS is not skipped)
+        st.text_input(label=tr("TTS Text File"), 
+                      placeholder=tr("Please input TTS text file path (will be used for all scenes)"),
+                      help=tr("One Line Text For One Scene, UTF-8 encoding. This file will be used for all video scenes."),
+                      key="tts_text_file")
 
-# 配音区域
-captioning_container = st.container(border=True)
-with captioning_container:
-    # 配音
-    st.subheader(tr("Video Captioning"))
+# 配音区域 (only show if TTS is not skipped)
+if not st.session_state.get("skip_tts", False):
+    captioning_container = st.container(border=True)
+    with captioning_container:
+        # 配音
+        st.subheader(tr("Video Captioning"))
 
-    llm_columns = st.columns(4)
-    with llm_columns[0]:
-        st.selectbox(label=tr("Choose audio type"), options=audio_types, format_func=lambda x: audio_types.get(x),
-                     key="audio_type")
-
-    if st.session_state.get("audio_type") == "remote":
         llm_columns = st.columns(4)
-        audio_voice = get_audio_voices()
+        with llm_columns[0]:
+            st.selectbox(label=tr("Choose audio type"), options=audio_types, format_func=lambda x: audio_types.get(x),
+                         key="audio_type")
+
+        if st.session_state.get("audio_type") == "remote":
+            llm_columns = st.columns(4)
+            audio_voice = get_audio_voices()
         with llm_columns[0]:
             st.selectbox(label=tr("Audio language"), options=audio_languages,
                          format_func=lambda x: audio_languages.get(x), key="audio_language")
@@ -155,106 +179,106 @@ with captioning_container:
                          key="audio_speed")
         with llm_columns[3]:
             st.button(label=tr("Testing Audio"), type="primary", on_click=try_test_audio)
-    if st.session_state.get("audio_type") == "local":
-        selected_local_audio_tts_provider = my_config['audio'].get('local_tts', {}).get('provider', '')
-        if not selected_local_audio_tts_provider:
-            selected_local_audio_tts_provider = 'chatTTS'
-        if selected_local_audio_tts_provider == 'chatTTS':
-            llm_columns = st.columns(5)
-            with llm_columns[0]:
-                st.checkbox(label=tr("Refine text"), key="refine_text")
-                st.text_input(label=tr("Refine text Prompt"), placeholder=tr("[oral_2][laugh_0][break_6]"),
-                              key="refine_text_prompt")
-            with llm_columns[1]:
-                st.slider(label=tr("Text Seed"), min_value=1, value=20, max_value=4294967295, step=1,
-                          key="text_seed")
-            with llm_columns[2]:
-                st.slider(label=tr("Audio Temperature"), min_value=0.01, value=0.3, max_value=1.0, step=0.01,
-                          key="audio_temperature")
-            with llm_columns[3]:
-                st.slider(label=tr("top_P"), min_value=0.1, value=0.7, max_value=0.9, step=0.1,
-                          key="audio_top_p")
-            with llm_columns[4]:
-                st.slider(label=tr("top_K"), min_value=1, value=20, max_value=20, step=1,
-                          key="audio_top_k")
-
-            st.checkbox(label=tr("Use random voice"), key="use_random_voice")
-
-            if st.session_state.get("use_random_voice"):
-                llm_columns = st.columns(4)
+        if st.session_state.get("audio_type") == "local":
+            selected_local_audio_tts_provider = my_config['audio'].get('local_tts', {}).get('provider', '')
+            if not selected_local_audio_tts_provider:
+                selected_local_audio_tts_provider = 'chatTTS'
+            if selected_local_audio_tts_provider == 'chatTTS':
+                llm_columns = st.columns(5)
                 with llm_columns[0]:
-                    st.slider(label=tr("Audio Seed"), min_value=1, value=20, max_value=4294967295, step=1,
-                              key="audio_seed")
+                    st.checkbox(label=tr("Refine text"), key="refine_text")
+                    st.text_input(label=tr("Refine text Prompt"), placeholder=tr("[oral_2][laugh_0][break_6]"),
+                                key="refine_text_prompt")
                 with llm_columns[1]:
-                    st.selectbox(label=tr("Audio speed"),
-                                 options=["normal", "fast", "faster", "fastest", "slow", "slower", "slowest"],
-                                 key="audio_speed")
+                    st.slider(label=tr("Text Seed"), min_value=1, value=20, max_value=4294967295, step=1,
+                              key="text_seed")
                 with llm_columns[2]:
-                    st.button(label=tr("Testing Audio"), type="primary", on_click=try_test_local_audio)
-            else:
-                llm_columns = st.columns(4)
-                with llm_columns[0]:
-                    st.text_input(label=tr("Local Chattts Dir"), placeholder=tr("Input Local Chattts Dir"),
-                                  value=default_chattts_dir,
-                                  key="default_chattts_dir")
-                with llm_columns[1]:
-                    chattts_list = get_file_map_from_dir(st.session_state["default_chattts_dir"], ".pt,.txt")
-                    st.selectbox(label=tr("Audio voice"), key="audio_voice",
-                                 options=chattts_list, format_func=lambda x: chattts_list[x])
-                with llm_columns[2]:
-                    st.selectbox(label=tr("Audio speed"),
-                                 options=["normal", "fast", "faster", "fastest", "slow", "slower", "slowest"],
-                                 key="audio_speed")
+                    st.slider(label=tr("Audio Temperature"), min_value=0.01, value=0.3, max_value=1.0, step=0.01,
+                              key="audio_temperature")
                 with llm_columns[3]:
-                    st.button(label=tr("Testing Audio"), type="primary", on_click=try_test_local_audio)
-        if selected_local_audio_tts_provider == 'GPTSoVITS':
-            use_reference_audio = st.checkbox(label=tr("Use reference audio"), key="use_reference_audio")
-            if use_reference_audio:
-                llm_columns = st.columns(4)
-                with llm_columns[0]:
-                    st.file_uploader(label=tr("Reference Audio"), type=["wav", "mp3"], accept_multiple_files=False,
-                                     key="reference_audio")
-                with llm_columns[1]:
-                    st.text_area(label=tr("Reference Audio Text"), placeholder=tr("Input Reference Audio Text"),
-                                 key="reference_audio_text")
-                with llm_columns[2]:
-                    st.selectbox(label=tr("Reference Audio language"), options=GPT_soVITS_languages,
-                                 format_func=lambda x: GPT_soVITS_languages.get(x),
-                                 key="reference_audio_language")
-            llm_columns = st.columns(6)
-            with llm_columns[0]:
-                st.slider(label=tr("Audio Temperature"), min_value=0.01, value=0.3, max_value=1.0, step=0.01,
-                          key="audio_temperature")
-            with llm_columns[1]:
-                st.slider(label=tr("top_P"), min_value=0.1, value=0.7, max_value=0.9, step=0.1,
-                          key="audio_top_p")
-            with llm_columns[2]:
-                st.slider(label=tr("top_K"), min_value=1, value=20, max_value=20, step=1,
-                          key="audio_top_k")
-            with llm_columns[3]:
-                st.selectbox(label=tr("Audio speed"),
-                             options=["normal", "fast", "faster", "fastest", "slow", "slower", "slowest"],
-                             key="audio_speed")
-            with llm_columns[4]:
-                st.selectbox(label=tr("Inference Audio language"),
-                             options=GPT_soVITS_languages, format_func=lambda x: GPT_soVITS_languages.get(x),
-                             key="inference_audio_language")
-            with llm_columns[5]:
-                st.button(label=tr("Testing Audio"), type="primary", on_click=try_test_local_audio)
+                    st.slider(label=tr("top_P"), min_value=0.1, value=0.7, max_value=0.9, step=0.1,
+                              key="audio_top_p")
+                with llm_columns[4]:
+                    st.slider(label=tr("top_K"), min_value=1, value=20, max_value=20, step=1,
+                              key="audio_top_k")
 
-recognition_container = st.container(border=True)
-with recognition_container:
-    # 配音
-    st.subheader(tr("Audio recognition"))
-    llm_columns = st.columns(4)
-    with llm_columns[0]:
-        st.selectbox(label=tr("Choose recognition type"), options=audio_types, format_func=lambda x: audio_types.get(x),
-                     key="recognition_audio_type")
-    with llm_columns[1]:
-        st.checkbox(label=tr("Use TTS text for subtitles"), 
-                   key="use_tts_text_for_subtitles", 
-                   value=True,
-                   help=tr("Use the original TTS text directly for subtitles instead of voice recognition (more accurate)"))
+                st.checkbox(label=tr("Use random voice"), key="use_random_voice")
+
+                if st.session_state.get("use_random_voice"):
+                    llm_columns = st.columns(4)
+                    with llm_columns[0]:
+                        st.slider(label=tr("Audio Seed"), min_value=1, value=20, max_value=4294967295, step=1,
+                                  key="audio_seed")
+                    with llm_columns[1]:
+                        st.selectbox(label=tr("Audio speed"),
+                                     options=["normal", "fast", "faster", "fastest", "slow", "slower", "slowest"],
+                                     key="audio_speed")
+                    with llm_columns[2]:
+                        st.button(label=tr("Testing Audio"), type="primary", on_click=try_test_local_audio)
+                else:
+                    llm_columns = st.columns(4)
+                    with llm_columns[0]:
+                        st.text_input(label=tr("Local Chattts Dir"), placeholder=tr("Input Local Chattts Dir"),
+                                      value=default_chattts_dir,
+                                      key="default_chattts_dir")
+                    with llm_columns[1]:
+                        chattts_list = get_file_map_from_dir(st.session_state["default_chattts_dir"], ".pt,.txt")
+                        st.selectbox(label=tr("Audio voice"), key="audio_voice",
+                                     options=chattts_list, format_func=lambda x: chattts_list[x])
+                    with llm_columns[2]:
+                        st.selectbox(label=tr("Audio speed"),
+                                     options=["normal", "fast", "faster", "fastest", "slow", "slower", "slowest"],
+                                     key="audio_speed")
+                    with llm_columns[3]:
+                        st.button(label=tr("Testing Audio"), type="primary", on_click=try_test_local_audio)
+            if selected_local_audio_tts_provider == 'GPTSoVITS':
+                use_reference_audio = st.checkbox(label=tr("Use reference audio"), key="use_reference_audio")
+                if use_reference_audio:
+                    llm_columns = st.columns(4)
+                    with llm_columns[0]:
+                        st.file_uploader(label=tr("Reference Audio"), type=["wav", "mp3"], accept_multiple_files=False,
+                                         key="reference_audio")
+                    with llm_columns[1]:
+                        st.text_area(label=tr("Reference Audio Text"), placeholder=tr("Input Reference Audio Text"),
+                                     key="reference_audio_text")
+                    with llm_columns[2]:
+                        st.selectbox(label=tr("Reference Audio language"), options=GPT_soVITS_languages,
+                                     format_func=lambda x: GPT_soVITS_languages.get(x),
+                                     key="reference_audio_language")
+                llm_columns = st.columns(6)
+                with llm_columns[0]:
+                    st.slider(label=tr("Audio Temperature"), min_value=0.01, value=0.3, max_value=1.0, step=0.01,
+                              key="audio_temperature")
+                with llm_columns[1]:
+                    st.slider(label=tr("top_P"), min_value=0.1, value=0.7, max_value=0.9, step=0.1,
+                              key="audio_top_p")
+                with llm_columns[2]:
+                    st.slider(label=tr("top_K"), min_value=1, value=20, max_value=20, step=1,
+                              key="audio_top_k")
+                with llm_columns[3]:
+                    st.selectbox(label=tr("Audio speed"),
+                                 options=["normal", "fast", "faster", "fastest", "slow", "slower", "slowest"],
+                                 key="audio_speed")
+                with llm_columns[4]:
+                    st.selectbox(label=tr("Inference Audio language"),
+                                 options=GPT_soVITS_languages, format_func=lambda x: GPT_soVITS_languages.get(x),
+                                 key="inference_audio_language")
+                with llm_columns[5]:
+                    st.button(label=tr("Testing Audio"), type="primary", on_click=try_test_local_audio)
+
+    recognition_container = st.container(border=True)
+    with recognition_container:
+        # 配音
+        st.subheader(tr("Audio recognition"))
+        llm_columns = st.columns(4)
+        with llm_columns[0]:
+            st.selectbox(label=tr("Choose recognition type"), options=audio_types, format_func=lambda x: audio_types.get(x),
+                         key="recognition_audio_type")
+        with llm_columns[1]:
+            st.checkbox(label=tr("Use TTS text for subtitles"), 
+                       key="use_tts_text_for_subtitles", 
+                       value=True,
+                       help=tr("Use the original TTS text directly for subtitles instead of voice recognition (more accurate)"))
 
 # 背景音乐
 bg_music_container = st.container(border=True)
@@ -331,53 +355,94 @@ with video_container:
         st.selectbox(label=tr("video Transition effect duration"), key="video_transition_effect_duration",
                      options=["1", "2"])
 
-# 字幕
-subtitle_container = st.container(border=True)
-with subtitle_container:
-    st.subheader(tr("Video Subtitles"))
-    llm_columns = st.columns(4)
-    with llm_columns[0]:
-        st.checkbox(label=tr("Enable subtitles"), key="enable_subtitles", value=True)
-    with llm_columns[1]:
-        # Load fonts dynamically from the fonts directory
-        available_fonts = get_font_list_for_ui(default_fonts_dir)
-        st.selectbox(label=tr("subtitle font"), key="subtitle_font",
-                     options=available_fonts,
-                     help=tr("Select a font from available TTF/TTC fonts in the fonts directory"))
-    with llm_columns[2]:
-        st.selectbox(label=tr("subtitle font size"), key="subtitle_font_size", index=1,
-                     options=[4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24])
-    with llm_columns[3]:
-        st.selectbox(label=tr("subtitle lines"), key="captioning_lines", index=1,
-                     options=[1, 2])
-
-    llm_columns = st.columns(4)
-    with llm_columns[0]:
-        subtitle_position_options = {5: "top left",
-                                     6: "top center",
-                                     7: "top right",
-                                     9: "center left",
-                                     10: "center",
-                                     11: "center right",
-                                     1: "bottom left",
-                                     2: "bottom center",
-                                     3: "bottom right"}
-        st.selectbox(label=tr("subtitle position"), key="subtitle_position", index=7,
-                     options=subtitle_position_options, format_func=lambda x: subtitle_position_options[x])
-    with llm_columns[1]:
-        st.color_picker(label=tr("subtitle color"), key="subtitle_color", value="#FFFFFF")
-    with llm_columns[2]:
-        st.color_picker(label=tr("subtitle border color"), key="subtitle_border_color", value="#000000")
-    with llm_columns[3]:
-        st.slider(label=tr("subtitle border width"), min_value=0, value=2, max_value=4, step=1,
-                  key="subtitle_border_width",
-                  help=tr("Set to 0 to disable border, or 1-4 for border thickness"))
+# 视频叠加层 (Video Overlay)
+overlay_container = st.container(border=True)
+with overlay_container:
+    st.subheader(tr("Video Overlay"))
+    st.info(tr("Add PNG/SVG overlay to videos. Transparent areas will show the video, non-transparent areas will show the overlay image. The overlay will be automatically scaled to match video dimensions. For best results, use overlays with the same aspect ratio as your videos."))
     
-    # Add subtitle margin control
-    st.slider(label=tr("subtitle vertical margin"), 
-              min_value=16, value=120, max_value=300, step=10,
-              key="subtitle_margin_v",
-              help=tr("Distance from edge in pixels. For bottom 1/4 position, use ~120 for 480p, ~180 for 720p, ~270 for 1080p"))
+    llm_columns = st.columns(3)
+    with llm_columns[0]:
+        st.checkbox(label=tr("Enable video overlay"), key="enable_video_overlay", value=False)
+    
+    if st.session_state.get("enable_video_overlay", False):
+        with llm_columns[1]:
+            overlay_mode = st.selectbox(
+                label=tr("Overlay mode"),
+                options=["single", "folder"],
+                format_func=lambda x: tr("Single image") if x == "single" else tr("Random from folder"),
+                key="overlay_mode"
+            )
+        
+        with llm_columns[2]:
+            st.slider(label=tr("Overlay opacity"), min_value=0.0, value=1.0, max_value=1.0, step=0.1,
+                      key="overlay_opacity",
+                      help=tr("1.0 = fully opaque, 0.0 = fully transparent"))
+        
+        # File/folder input based on mode
+        if overlay_mode == "single":
+            st.text_input(
+                label=tr("Overlay image path"),
+                placeholder=tr("Path to PNG/SVG overlay image"),
+                key="overlay_image_path",
+                help=tr("Supports PNG with alpha channel or SVG files")
+            )
+        else:
+            st.text_input(
+                label=tr("Overlay images folder"),
+                placeholder=tr("Path to folder containing PNG/SVG overlay images"),
+                key="overlay_folder_path",
+                help=tr("Each video will randomly select an overlay from this folder")
+            )
+
+# 字幕 (only show if TTS is not skipped)
+if not st.session_state.get("skip_tts", False):
+    subtitle_container = st.container(border=True)
+    with subtitle_container:
+        st.subheader(tr("Video Subtitles"))
+        llm_columns = st.columns(4)
+        with llm_columns[0]:
+            st.checkbox(label=tr("Enable subtitles"), key="enable_subtitles", value=True)
+        with llm_columns[1]:
+            # Load fonts dynamically from the fonts directory
+            available_fonts = get_font_list_for_ui(default_fonts_dir)
+            st.selectbox(label=tr("subtitle font"), key="subtitle_font",
+                         options=available_fonts,
+                         help=tr("Select a font from available TTF/TTC fonts in the fonts directory"))
+        with llm_columns[2]:
+            st.selectbox(label=tr("subtitle font size"), key="subtitle_font_size", index=1,
+                         options=[4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24])
+        with llm_columns[3]:
+            st.selectbox(label=tr("subtitle lines"), key="captioning_lines", index=1,
+                         options=[1, 2])
+
+        llm_columns = st.columns(4)
+        with llm_columns[0]:
+            subtitle_position_options = {5: "top left",
+                                         6: "top center",
+                                         7: "top right",
+                                         9: "center left",
+                                         10: "center",
+                                         11: "center right",
+                                         1: "bottom left",
+                                         2: "bottom center",
+                                         3: "bottom right"}
+            st.selectbox(label=tr("subtitle position"), key="subtitle_position", index=7,
+                         options=subtitle_position_options, format_func=lambda x: subtitle_position_options[x])
+        with llm_columns[1]:
+            st.color_picker(label=tr("subtitle color"), key="subtitle_color", value="#FFFFFF")
+        with llm_columns[2]:
+            st.color_picker(label=tr("subtitle border color"), key="subtitle_border_color", value="#000000")
+        with llm_columns[3]:
+            st.slider(label=tr("subtitle border width"), min_value=0, value=2, max_value=4, step=1,
+                      key="subtitle_border_width",
+                      help=tr("Set to 0 to disable border, or 1-4 for border thickness"))
+        
+        # Add subtitle margin control
+        st.slider(label=tr("subtitle vertical margin"), 
+                  min_value=16, value=120, max_value=300, step=10,
+                  key="subtitle_margin_v",
+                  help=tr("Distance from edge in pixels. For bottom 1/4 position, use ~120 for 480p, ~180 for 720p, ~270 for 1080p"))
 
 # 生成视频
 video_generator = st.container(border=True)

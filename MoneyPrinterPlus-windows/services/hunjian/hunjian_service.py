@@ -47,14 +47,19 @@ def get_session_video_scene_text():
     if 'scene_number' not in st.session_state:
         st.session_state['scene_number'] = 0
     
-    # Get the single TTS text file path
-    single_tts_text_file = st.session_state.get("tts_text_file", None)
+    # Check if TTS is skipped
+    skip_tts = st.session_state.get("skip_tts", False)
+    
+    # Get the single TTS text file path (only if TTS is not skipped)
+    single_tts_text_file = None
+    if not skip_tts:
+        single_tts_text_file = st.session_state.get("tts_text_file", None)
     
     for i in range(int(st.session_state.get('scene_number'))+1):
         print("select video scene " + str(i + 1))
         if "video_scene_folder_" + str(i + 1) in st.session_state and st.session_state["video_scene_folder_" + str(i + 1)] is not None:
             video_dir_list.append(st.session_state["video_scene_folder_" + str(i + 1)])
-            # Use the single TTS text file for all scenes
+            # Use the single TTS text file for all scenes (or None if TTS is skipped)
             video_text_list.append(single_tts_text_file)
     return video_dir_list, video_text_list
 
@@ -150,6 +155,13 @@ def get_video_text_from_list(video_scene_text_list):
 def get_audio_and_video_list(audio_service, audio_rate):
     audio_output_file_list = []
     video_dir_list, video_text_list = get_session_video_scene_text()
+    
+    # Check if TTS is skipped
+    skip_tts = st.session_state.get("skip_tts", False)
+    if skip_tts:
+        # Return empty audio list and video list when TTS is skipped
+        return audio_output_file_list, video_dir_list
+    
     video_scene_text_list = get_video_scene_text_list(video_text_list, use_all_lines=True)  # Use all lines
     audio_voice = get_must_session_option("audio_voice", "请先设置配音语音")
     
@@ -222,6 +234,13 @@ def get_audio_and_video_list(audio_service, audio_rate):
 def get_audio_and_video_list_local(audio_service):
     audio_output_file_list = []
     video_dir_list, video_text_list = get_session_video_scene_text()
+    
+    # Check if TTS is skipped
+    skip_tts = st.session_state.get("skip_tts", False)
+    if skip_tts:
+        # Return empty audio list and video list when TTS is skipped
+        return audio_output_file_list, video_dir_list
+    
     video_scene_text_list = get_video_scene_text_list(video_text_list, use_all_lines=True)  # Use all lines
     
     scene_idx = 0
@@ -325,6 +344,12 @@ def concat_audio_files_for_scene(audio_files, output_file):
 
 
 def get_video_text():
+    # Check if TTS is skipped
+    skip_tts = st.session_state.get("skip_tts", False)
+    if skip_tts:
+        # Return empty string when TTS is skipped
+        return ""
+    
     video_dir_list, video_text_list = get_session_video_scene_text()
     video_scene_text_list = get_video_scene_text_list(video_text_list, use_all_lines=True)  # Use all lines
     combined_text = get_video_text_from_list(video_scene_text_list)

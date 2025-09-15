@@ -33,6 +33,7 @@ import streamlit as st
 from PIL import Image
 
 from services.video.texiao_service import gen_filter
+from services.video.overlay_service import VideoOverlayService
 from tools.file_utils import generate_temp_filename
 from tools.tr_utils import tr
 from tools.utils import random_with_system_time, run_ffmpeg_command, extent_audio
@@ -196,20 +197,51 @@ def add_music(video_file, audio_file):
 
 def add_background_music(video_file, audio_file, bgm_volume=0.5):
     output_file = generate_temp_filename(video_file)
-    # 构建FFmpeg命令
-    command = [
-        'ffmpeg',
-        '-i', video_file,  # 输入视频文件
-        '-i', audio_file,  # 输入音频文件（背景音乐）
-        '-filter_complex',
-        f"[1:a]aloop=loop=0:size=100M[bgm];[bgm]volume={bgm_volume}[bgm_vol];[0:a][bgm_vol]amix=duration=first:dropout_transition=3:inputs=2[a]",
-        # 在[1:a]之后添加了aloop过滤器来循环背景音乐。loop=0表示无限循环，size=200M和duration=300是可选参数，用于设置循环音频的大小或时长（这里设置得很大以确保足够长，可以根据实际需要调整），start=0表示从音频的开始处循环。
-        '-map', '0:v',  # 选择视频流
-        '-map', '[a]',  # 选择混合后的音频流
-        '-c:v', 'copy',  # 复制视频流
-        '-shortest',  # 输出时长与最短的输入流相同
-        output_file  # 输出文件
+    
+    # Check if video has audio stream
+    check_audio_cmd = [
+        'ffprobe',
+        '-v', 'error',
+        '-select_streams', 'a:0',
+        '-show_entries', 'stream=codec_type',
+        '-of', 'default=noprint_wrappers=1:nokey=1',
+        video_file
     ]
+    
+    result = subprocess.run(check_audio_cmd, capture_output=True, text=True)
+    has_audio = result.stdout.strip() == 'audio'
+    
+    # If video has no audio, directly add background music
+    if not has_audio:
+        print(f"Video has no audio track. Adding background music directly.")
+        command = [
+            'ffmpeg',
+            '-i', video_file,  # 输入视频文件
+            '-i', audio_file,  # 输入音频文件（背景音乐）
+            '-filter_complex',
+            f"[1:a]aloop=loop=0:size=100M[bgm];[bgm]volume={bgm_volume}[a]",
+            '-map', '0:v',  # 选择视频流
+            '-map', '[a]',  # 选择音频流
+            '-c:v', 'copy',  # 复制视频流
+            '-shortest',  # 输出时长与最短的输入流相同
+            output_file  # 输出文件
+        ]
+    else:
+        # Original command for videos with audio
+        command = [
+            'ffmpeg',
+            '-i', video_file,  # 输入视频文件
+            '-i', audio_file,  # 输入音频文件（背景音乐）
+            '-filter_complex',
+            f"[1:a]aloop=loop=0:size=100M[bgm];[bgm]volume={bgm_volume}[bgm_vol];[0:a][bgm_vol]amix=duration=first:dropout_transition=3:inputs=2[a]",
+            # 在[1:a]之后添加了aloop过滤器来循环背景音乐。loop=0表示无限循环，size=200M和duration=300是可选参数，用于设置循环音频的大小或时长（这里设置得很大以确保足够长，可以根据实际需要调整），start=0表示从音频的开始处循环。
+            '-map', '0:v',  # 选择视频流
+            '-map', '[a]',  # 选择混合后的音频流
+            '-c:v', 'copy',  # 复制视频流
+            '-shortest',  # 输出时长与最短的输入流相同
+            output_file  # 输出文件
+        ]
+    
     # 调用FFmpeg命令
     print(command)
     subprocess.run(command, capture_output=True, text=True)
@@ -327,6 +359,9 @@ class VideoService:
         self.target_width, self.target_height = st.session_state["video_size"].split('x')
         self.target_width = int(self.target_width)
         self.target_height = int(self.target_height)
+        
+        # Initialize overlay service
+        self.overlay_service = VideoOverlayService()
 
         self.enable_background_music = st.session_state["enable_background_music"]
         # Check if background_music is a directory or file
@@ -350,7 +385,15 @@ class VideoService:
             self.default_duration = self.seg_min_duration
 
     def normalize_video(self):
+        # Validate overlay settings first
+        if self.overlay_service.is_enabled():
+            is_valid, error_msg = self.overlay_service.validate_overlay_settings()
+            if not is_valid:
+                st.error(error_msg)
+                st.stop()
+        
         return_video_list = []
+        video_index = 0
         for media_file in self.video_list:
             # 如果当前文件是图片，添加转换为视频的命令
             if media_file.lower().endswith(('.jpg', '.jpeg', '.png')):
@@ -369,6 +412,7 @@ class VideoService:
                         '-r', str(self.fps),
                         '-vf',
                         f'scale=-1:{self.target_height}:force_original_aspect_ratio=1,crop={self.target_width}:{self.target_height}:(ow-iw)/2:(oh-ih)/2',
+                        '-an',  # Remove audio
                         '-y', output_name]
                 else:
                     # ffmpeg_cmd = f"ffmpeg -loop 1 -i '{media_file}' -c:v h264 -t {self.default_duration} -r {self.fps} -vf 'scale={self.target_width}:-1:force_original_aspect_ratio=1,crop={self.target_width}:{self.target_height}:(ow-iw)/2:(oh-ih)/2' -y {output_name}"
@@ -381,9 +425,20 @@ class VideoService:
                         '-r', str(self.fps),
                         '-vf',
                         f'scale={self.target_width}:-1:force_original_aspect_ratio=1,crop={self.target_width}:{self.target_height}:(ow-iw)/2:(oh-ih)/2',
+                        '-an',  # Remove audio
                         '-y', output_name]
                 print(" ".join(ffmpeg_cmd))
                 subprocess.run(ffmpeg_cmd, check=True, capture_output=True)
+                
+                # Apply overlay if enabled
+                if self.overlay_service.is_enabled():
+                    overlay_output = generate_temp_filename(output_name, "_overlay.mp4", work_output_dir)
+                    if self.overlay_service.apply_overlay_to_video(output_name, overlay_output, video_index):
+                        # Remove the non-overlayed video and use the overlayed one
+                        if os.path.exists(output_name):
+                            os.remove(output_name)
+                        output_name = overlay_output
+                
                 return_video_list.append(output_name)
 
             else:
@@ -503,7 +558,20 @@ class VideoService:
                 # if os.path.exists(output_name):
                 #     os.remove(media_file)
                 #     os.renames(output_name, media_file)
+                
+                # Apply overlay if enabled
+                if self.overlay_service.is_enabled():
+                    overlay_output = generate_temp_filename(output_name, "_overlay.mp4", work_output_dir)
+                    if self.overlay_service.apply_overlay_to_video(output_name, overlay_output, video_index):
+                        # Remove the non-overlayed video and use the overlayed one
+                        if os.path.exists(output_name):
+                            os.remove(output_name)
+                        output_name = overlay_output
+                
                 return_video_list.append(output_name)
+            
+            video_index += 1
+            
         self.video_list = return_video_list
         return return_video_list
 

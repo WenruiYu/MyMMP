@@ -263,7 +263,7 @@ def call_no_stream(client: OpenAI, model: str, system_prompt: str, user_prompt: 
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--tts", required=True)
+    ap.add_argument("--tts", required=False, help="TTS file path (optional)")
     ap.add_argument("--caption", required=True)
     ap.add_argument("-n","--num", type=int, default=3, help="Total variants to generate")
     ap.add_argument("--variants-per-request", type=int, default=1, help="How many variants per API request")
@@ -276,6 +276,7 @@ def main():
     ap.add_argument("--stream-log", default=None, help="Optional path to save full stream (reasoning+content)")
     ap.add_argument("--max_tokens", type=int, default=3072)
     ap.add_argument("--retries", type=int, default=2, help="Retries on malformed JSON")
+    ap.add_argument("--no-tts", action="store_true", help="Skip TTS generation, only process captions")
     args = ap.parse_args()
 
     api_key = os.environ.get("DEEPSEEK_API_KEY")
@@ -284,55 +285,96 @@ def main():
 
     client = OpenAI(api_key=api_key, base_url=args.base_url)
 
-    tts_path = Path(args.tts).resolve()
     cap_path = Path(args.caption).resolve()
-    tts_dir, cap_dir = tts_path.parent, cap_path.parent
+    cap_dir = cap_path.parent
 
-    tts_src = read_text(tts_path)
     cap_src = read_text(cap_path)
     cap_body, tags = split_caption_and_tags(cap_src)
-
-    tts_sig = lang_signature(tts_src)
     cap_sig = lang_signature(cap_body)
 
+    # Handle TTS if provided
+    tts_src = None
+    tts_sig = None
+    tts_dir = None
+    if args.tts and not args.no_tts:
+        tts_path = Path(args.tts).resolve()
+        tts_dir = tts_path.parent
+        tts_src = read_text(tts_path)
+        tts_sig = lang_signature(tts_src)
+
     # Build prompts
-    language_rules = (
-        "• 语言保持：TTS 仅按 TTS 原文的语言/混合语言改写；Caption 仅按 Caption 正文的语言/混合语言改写；"
-        "禁止翻译或跨语言替换；保持原有 code-switching 位置与比例；品牌/地名/人名/型号/数字/货币符号/Emoji 原样保留。"
-    )
-    base_rules = (
-        "• TTS：口语化、易念，长度与原稿接近（±20%）；避免拗口与过长句。\n"
-        "• Caption：首句做强钩子（中文≤10字；英文≤6 words），不得新增标签；不得在正文中出现#标签。\n"
-        "• 只输出合法 JSON。"
-    )
+    if tts_src:
+        language_rules = (
+            "• 语言保持：TTS 仅按 TTS 原文的语言/混合语言改写；Caption 仅按 Caption 正文的语言/混合语言改写；"
+            "禁止翻译或跨语言替换；保持原有 code-switching 位置与比例；品牌/地名/人名/型号/数字/货币符号/Emoji 原样保留。"
+        )
+        base_rules = (
+            "• TTS：口语化、易念，长度与原稿接近（±20%）；避免拗口与过长句。\n"
+            "• Caption：首句做强钩子（中文≤10字；英文≤6 words），不得新增标签；不得在正文中出现#标签。\n"
+            "• 只输出合法 JSON。"
+        )
+    else:
+        language_rules = (
+            "• 语言保持：Caption 仅按 Caption 正文的语言/混合语言改写；"
+            "禁止翻译或跨语言替换；保持原有 code-switching 位置与比例；品牌/地名/人名/型号/数字/货币符号/Emoji 原样保留。"
+        )
+        base_rules = (
+            "• Caption：首句做强钩子（中文≤10字；英文≤6 words），不得新增标签；不得在正文中出现#标签。\n"
+            "• 只输出合法 JSON。"
+        )
 
     def build_user_prompt(batch_index: int, expect_k: int) -> str:
         # If expect_k == 1, single object; else variants array with exact length
-        template_single = "{\n  \"tts\": \"改写后的 TTS 文案（保持原语言/混合语言，不翻译）\",\n  \"caption\": \"改写后的下方文案（保持原语言/混合语言，不翻译；不含任何标签）\"\n}"
-        template_multi = "{\n  \"variants\": [\n    {\"tts\": \"...\", \"caption\": \"...\"}\n  ]\n}"
+        if tts_src:
+            template_single = "{\n  \"tts\": \"改写后的 TTS 文案（保持原语言/混合语言，不翻译）\",\n  \"caption\": \"改写后的下方文案（保持原语言/混合语言，不翻译；不含任何标签）\"\n}"
+            template_multi = "{\n  \"variants\": [\n    {\"tts\": \"...\", \"caption\": \"...\"}\n  ]\n}"
+            
+            return (
+                (f"【任务】此轮生成 {expect_k} 个互不重复的变体；"
+                 f"{'直接返回单个JSON对象' if expect_k==1 else '返回一个包含 variants 数组的 JSON 对象，variants 长度必须精确等于 '+str(expect_k)}；"
+                 "不得返回除 JSON 以外的任何文本。\n") +
+                f"【风格提示】{style_preset(batch_index)}\n"
+                f"【TTS 语言指纹】{tts_sig}\n"
+                f"【Caption 语言指纹】{cap_sig}\n\n"
+                "【TTS 原文】\n" + tts_src + "\n\n" +
+                "【下方文案正文（不含标签）】\n" + cap_body + "\n\n" +
+                "【输出 JSON 模板】\n" + (template_single if expect_k==1 else template_multi) + "\n"
+            )
+        else:
+            template_single = "{\n  \"caption\": \"改写后的下方文案（保持原语言/混合语言，不翻译；不含任何标签）\"\n}"
+            template_multi = "{\n  \"variants\": [\n    {\"caption\": \"...\"}\n  ]\n}"
+            
+            return (
+                (f"【任务】此轮生成 {expect_k} 个互不重复的 Caption 变体；"
+                 f"{'直接返回单个JSON对象' if expect_k==1 else '返回一个包含 variants 数组的 JSON 对象，variants 长度必须精确等于 '+str(expect_k)}；"
+                 "不得返回除 JSON 以外的任何文本。\n") +
+                f"【风格提示】{style_preset(batch_index)}\n"
+                f"【Caption 语言指纹】{cap_sig}\n\n"
+                "【下方文案正文（不含标签）】\n" + cap_body + "\n\n" +
+                "【输出 JSON 模板】\n" + (template_single if expect_k==1 else template_multi) + "\n"
+            )
 
-        return (
-            (f"【任务】此轮生成 {expect_k} 个互不重复的变体；"
-             f"{'直接返回单个JSON对象' if expect_k==1 else '返回一个包含 variants 数组的 JSON 对象，variants 长度必须精确等于 '+str(expect_k)}；"
-             "不得返回除 JSON 以外的任何文本。\n") +
-            f"【风格提示】{style_preset(batch_index)}\n"
-            f"【TTS 语言指纹】{tts_sig}\n"
-            f"【Caption 语言指纹】{cap_sig}\n\n"
-            "【TTS 原文】\n" + tts_src + "\n\n" +
-            "【下方文案正文（不含标签）】\n" + cap_body + "\n\n" +
-            "【输出 JSON 模板】\n" + (template_single if expect_k==1 else template_multi) + "\n"
+    # System prompt varies with per-request setting and TTS availability
+    if tts_src:
+        system_prompt_single = (
+            "你是短视频文案改写助手。严格输出 json（单个对象，不得包含数组或 variants 键）。结构：{\"tts\":\"...\",\"caption\":\"...\"}。\n"
+            + language_rules + "\n" + base_rules
         )
-
-    # System prompt varies with per-request setting
-    system_prompt_single = (
-        "你是短视频文案改写助手。严格输出 json（单个对象，不得包含数组或 variants 键）。结构：{\"tts\":\"...\",\"caption\":\"...\"}。\n"
-        + language_rules + "\n" + base_rules
-    )
-    system_prompt_multi = (
-        "你是短视频文案改写助手。严格输出 json（对象内包含 variants 数组）。结构：{\"variants\":[{\"tts\":\"...\",\"caption\":\"...\"}, ...]}。\n"
-        "variants 的长度必须与指令一致，不得多也不得少。\n"
-        + language_rules + "\n" + base_rules
-    )
+        system_prompt_multi = (
+            "你是短视频文案改写助手。严格输出 json（对象内包含 variants 数组）。结构：{\"variants\":[{\"tts\":\"...\",\"caption\":\"...\"}, ...]}。\n"
+            "variants 的长度必须与指令一致，不得多也不得少。\n"
+            + language_rules + "\n" + base_rules
+        )
+    else:
+        system_prompt_single = (
+            "你是短视频文案改写助手。严格输出 json（单个对象，不得包含数组或 variants 键）。结构：{\"caption\":\"...\"}。\n"
+            + language_rules + "\n" + base_rules
+        )
+        system_prompt_multi = (
+            "你是短视频文案改写助手。严格输出 json（对象内包含 variants 数组）。结构：{\"variants\":[{\"caption\":\"...\"}, ...]}。\n"
+            "variants 的长度必须与指令一致，不得多也不得少。\n"
+            + language_rules + "\n" + base_rules
+        )
 
     total_needed = args.num
     per_req = max(1, args.variants_per_request)
@@ -404,18 +446,23 @@ def main():
         print(f"\n[Debug] Writing {len(variants)} variants...")
         for item in variants:
             global_variant_index += 1
-            tts_out = (item.get("tts") or "").strip()
-            # Preprocess TTS text to convert punctuation to newlines
-            tts_out = preprocess_tts_text(tts_out)
             
+            # Handle TTS output if TTS is provided
+            if tts_src and tts_dir:
+                tts_out = (item.get("tts") or "").strip()
+                # Preprocess TTS text to convert punctuation to newlines
+                tts_out = preprocess_tts_text(tts_out)
+                idx = f"{global_variant_index:02d}"
+                (tts_dir / f"variant_{idx}_tts.txt").write_text(tts_out, encoding="utf-8")
+                print(f"✓ TTS: {tts_dir / f'variant_{idx}_tts.txt'}")
+            
+            # Always handle caption output
             cap_out = (item.get("caption") or "").strip()
             if tags:
                 cap_out = (cap_out + "\n" + " ".join(tags)).strip()
 
             idx = f"{global_variant_index:02d}"
-            (tts_dir / f"variant_{idx}_tts.txt").write_text(tts_out, encoding="utf-8")
             (cap_dir / f"variant_{idx}_caption.txt").write_text(cap_out, encoding="utf-8")
-            print(f"✓ TTS: {tts_dir / f'variant_{idx}_tts.txt'}")
             print(f"✓ Caption: {cap_dir / f'variant_{idx}_caption.txt'}")
 
         made += len(variants)
