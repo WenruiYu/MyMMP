@@ -4,7 +4,6 @@ MoneyPrinterPlus-windows/work/
 MoneyPrinterPlus-windows/__pycache__/
 MoneyPrinterPlus-windows/**/__pycache__/
 MoneyPrinterPlus-windows/venv/
-MoneyPrinterPlus-windows/config/config.yml
 MoneyPrinterPlus-windows/config/session.yml
 MoneyPrinterPlus-windows/.streamlit/secrets.toml
 

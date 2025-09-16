@@ -1,0 +1,40 @@
+audio_output_file: D:\MoneyPrinterPlus\MoneyPrinterPlus-windows\work\1757488831582.wav
+audio_output_file_list: []
+background_music: null
+background_music_dir: "P:\\\u56E2\u961F\u7A7A\u95F4\\\u5357\u4EAC\u9AD8\u6052\u6587\
+  \u5316\u4F20\u5A92\u6709\u9650\u516C\u53F8\\\u77E9\u9635\u89C6\u9891\u6BCF\u65E5\
+  \u4E0A\u4F20\\B \u87F9\u5BB4\\20250916\\bgm"
+background_music_volume: 0.3
+batch_completed: true
+batch_folder_path: D:\MoneyPrinterPlus\MoneyPrinterPlus-windows\final\batch_20250916_110845
+batch_in_progress: false
+batch_start_index: 0
+batch_total_videos: 2
+batch_video_counter: 2
+captioning_output: D:\MoneyPrinterPlus\MoneyPrinterPlus-windows\work\1757488831802.srt
+enable_background_music: true
+enable_video_overlay: false
+enable_video_transition_effect: true
+is_mix_video: true
+random_background_music: true
+result_video_file: D:\MoneyPrinterPlus\MoneyPrinterPlus-windows\final\batch_20250916_110845\2.mp4
+scene_number: 0
+skip_tts: true
+target_video_length: 60
+video_dir_list:
+- "P:\\\u56E2\u961F\u7A7A\u95F4\\\u5357\u4EAC\u9AD8\u6052\u6587\u5316\u4F20\u5A92\u6709\
+  \u9650\u516C\u53F8\\\u77E9\u9635\u89C6\u9891\u6BCF\u65E5\u4E0A\u4F20\\B \u87F9\u5BB4\
+  \\20250916\\materials"
+video_fps: 30
+video_layout: portrait
+video_scene_folder_1: "P:\\\u56E2\u961F\u7A7A\u95F4\\\u5357\u4EAC\u9AD8\u6052\u6587\
+  \u5316\u4F20\u5A92\u6709\u9650\u516C\u53F8\\\u77E9\u9635\u89C6\u9891\u6BCF\u65E5\
+  \u4E0A\u4F20\\B \u87F9\u5BB4\\20250916\\materials"
+video_scene_text_1: D:\MoneyPrinterPlus\aigc\publish\20250905\tts
+video_segment_max_length: 10
+video_segment_min_length: 5
+video_size: 1080x1920
+video_transition_effect_duration: '1'
+video_transition_effect_type: xfade
+video_transition_effect_value: fade
+videos_count: 2

@@ -1,76 +1,63 @@
 audio:
+  Ali:
+    access_key_id: LTAI5tSpu6Vj1DEdY1tUW18y
+    access_key_secret: Qp0pkp8yttogRzLivXxfLgzvYPoNGx
+    app_key: qN2ZG8iNX1GwgT1k
   Azure:
     service_region: SERVICE_REGION
     speech_key: SPEECH_KEY
-  Ali:
-    access_key_id: ACCESS_KEY_ID
-    access_key_secret: ACCESS_KEY_SECRET
-    app_key: APP_KEY
   Tencent:
-    access_key_id: ACCESS_KEY_ID
-    access_key_secret: ACCESS_KEY_SECRET
-    app_key: APP_KEY
-  provider: Azure
+    access_key_id: AKIDDKOQJF3g5HG1aw52mLhpkU4RbYKwMadU
+    access_key_secret: jHfpnY7SaWFn8JH2av9D5kCRSGrFTVKx
+    app_key: '1327948466'
+  local_recognition:
+    fasterwhisper:
+      compute_type: int8
+      device_type: cuda
+      model_name: medium
+    provider: fasterwhisper
   local_tts:
-    provider: chatTTS
-    chatTTS:
-      server_location: http://127.0.0.1:8080/
     GPTSoVITS:
       server_location: http://127.0.0.1:9880/
-  local_recognition:
-    provider: fasterwhisper
-    fasterwhisper:
-      model_name: tiny
-      device_type: cuda
-      compute_type: int8
-
-
+    chatTTS:
+      server_location: http://127.0.0.1:8080/
+    provider: chatTTS
+  provider: Tencent
 captioning:
   provider: Azure
-
 llm:
-  Ollama:
-    api_key: YOUR_API_KEY
-    base_url: http://127.0.0.1:11434/
-    model_name: llama3
-  DeepSeek:
-    api_key: YOUR_API_KEY
-    base_url: https://api.deepseek.com/
-    model_name: deepseek-chat
-  Baichuan:
-    api_key: YOUR_API_KEY
-    model_name: Baichuan3-Turbo
-  Moonshot:
-    api_key: YOUR_API_KEY
-    model_name: moonshot-v1-8k
-  Tongyi:
-    api_key: YOUR_API_KEY
-    model_name: qwen-turbo
-  OpenAI:
-    api_key: YOUR_API_KEY
-    model_name: gpt-3.5-turbo
   Azure:
     api_key: YOUR_API_KEY
     base_url: http://base.url.openai
     model_name: null
+  Baichuan:
+    api_key: YOUR_API_KEY
+    model_name: Baichuan3-Turbo
+  DeepSeek:
+    api_key: sk-34f175ccadc4432a8688a44714487025
+    base_url: https://api.deepseek.com/
+    model_name: deepseek-chat
+  Moonshot:
+    api_key: YOUR_API_KEY
+    model_name: moonshot-v1-8k
+  Ollama:
+    api_key: YOUR_API_KEY
+    base_url: http://127.0.0.1:11434/
+    model_name: llama3
+  OpenAI:
+    api_key: YOUR_API_KEY
+    model_name: gpt-3.5-turbo
   Qianfan:
     api_key: YOUR_API_KEY
-    secret_key: YOUR_SK_KEY
     model_name: ERNIE-Bot-turbo
-  provider: Moonshot
-resource:
-  pexels:
-    api_key: API_KEY
-  pixabay:
-    api_key: API_KEY
-  provider: pexels
-ui:
-  language: zh-CN
-video:
-
+    secret_key: YOUR_SK_KEY
+  Tongyi:
+    api_key: YOUR_API_KEY
+    model_name: qwen-turbo
+  provider: DeepSeek
 aigc:
   provider: DeepSeek
-  api_key: YOUR_API_KEY
+  api_key: sk-34f175ccadc4432a8688a44714487025
   DeepSeek:
     model_name: deepseek-chat
     base_url: https://api.deepseek.com/
@@ -93,37 +80,44 @@ aigc:
   Tongyi:
     model_name: qwen-turbo
     api_key: YOUR_API_KEY
-
-test_mode: False
-
 publisher:
-  driver_type: chrome
-  content_location:
-  driver_location:
-  auto_publish: True
+  auto_publish: true
   common:
-    enable: True
-    title_prefix: 标题前缀
     collection: 集合名称
+    enable: true
+    tags: []
+    title_prefix: 标题前缀
+  content_location: null
   douyin:
-    enable: True
-    title_prefix: 标题前缀
     collection: 集合名称
-  kuaishou:
-    enable: True
+    enable: true
     title_prefix: 标题前缀
+  driver_location: null
+  driver_type: chrome
+  kuaishou:
     collection: 集合名称
     domain:
-      enable: True
+      enable: true
       level1: 教育
       level2: 语言教育
-  xiaohongshu:
-    enable: True
+    enable: true
     title_prefix: 标题前缀
-    collection: 集合名称
   shipinhao:
-    enable: True
-    original: False
-    title_prefix: 标题前缀
     collection: 集合名称
-
+    enable: true
+    original: false
+    title_prefix: 标题前缀
+  xiaohongshu:
+    collection: 集合名称
+    enable: true
+    title_prefix: 标题前缀
+resource:
+  pexels:
+    api_key: API_KEY
+  pixabay:
+    api_key: API_KEY
+  provider: pexels
+test_mode: false
+ui:
+  language: zh-CN
+video: null
