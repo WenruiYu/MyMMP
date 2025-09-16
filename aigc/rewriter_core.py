@@ -20,9 +20,9 @@ __all__ = ["RewriterConfig", "Rewriter"]
 @dataclass
 class RewriterConfig:
     # Required IO
-    tts: Path
-    caption: Path
-
+    caption: Path                          # Caption is always required
+    tts: Optional[Path] = None            # TTS is optional for caption-only mode
+    
     # Generation
     num: int = 3                          # total variants across all calls
     variants_per_request: int = 1         # how many variants to request per API call
@@ -40,6 +40,9 @@ class RewriterConfig:
 
     # Auth
     api_key: Optional[str] = None         # if None, use env DEEPSEEK_API_KEY
+    
+    # Mode
+    no_tts: bool = False                  # If True, only process captions (caption-only mode)
 
     # Python/Script
     python_exe: Optional[Path] = None     # default: current interpreter
@@ -50,7 +53,12 @@ class Rewriter:
     Thin wrapper that calls the CLI script `rewrite_tiktok_ds.py`.
 
     Usage:
+        # With TTS:
         cfg = RewriterConfig(tts=Path("a.txt"), caption=Path("b.txt"), num=4)
+        code = Rewriter(cfg).run(print, print)
+        
+        # Caption-only mode:
+        cfg = RewriterConfig(caption=Path("b.txt"), num=4, no_tts=True)
         code = Rewriter(cfg).run(print, print)
     """
 
@@ -83,7 +91,6 @@ class Rewriter:
         c: List[str] = [
             str(self._python_exe()),
             str(script),
-            "--tts", str(Path(self.cfg.tts).resolve()),
             "--caption", str(Path(self.cfg.caption).resolve()),
             "--num", str(int(self.cfg.num)),
             "--variants-per-request", str(int(self.cfg.variants_per_request)),
@@ -94,6 +101,13 @@ class Rewriter:
             "--stream-style", self.cfg.stream_style,
             "--temperature", str(self.cfg.temperature),
         ]
+        
+        # Add TTS only if provided and not in no-tts mode
+        if self.cfg.tts and not self.cfg.no_tts:
+            c.extend(["--tts", str(Path(self.cfg.tts).resolve())])
+        elif self.cfg.no_tts:
+            c.append("--no-tts")
+        
         if self.cfg.stream:
             c.append("--stream")
             if self.cfg.no_reasoning:

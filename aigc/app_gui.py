@@ -38,14 +38,25 @@ class App(tk.Tk):
     def _build_widgets(self) -> None:
         pad = {"padx": 8, "pady": 6}
 
+        # Mode Selection
+        mode_frame = ttk.LabelFrame(self, text="Mode")
+        mode_frame.pack(fill="x", **pad)
+        
+        self.use_tts_var = tk.BooleanVar(value=True)
+        ttk.Checkbutton(mode_frame, text="Include TTS Rewriting (uncheck for caption-only mode)", 
+                       variable=self.use_tts_var, command=self._toggle_tts_input).pack(anchor="w", padx=5, pady=5)
+
         # Inputs
         top = ttk.LabelFrame(self, text="Inputs")
         top.pack(fill="x", **pad)
 
         self.tts_var = tk.StringVar()
-        ttk.Label(top, text="TTS file:").grid(row=0, column=0, sticky="w")
-        ttk.Entry(top, textvariable=self.tts_var, width=80).grid(row=0, column=1, sticky="we")
-        ttk.Button(top, text="Browse...", command=self._browse_tts).grid(row=0, column=2, sticky="e")
+        self.tts_label = ttk.Label(top, text="TTS file:")
+        self.tts_label.grid(row=0, column=0, sticky="w")
+        self.tts_entry = ttk.Entry(top, textvariable=self.tts_var, width=80)
+        self.tts_entry.grid(row=0, column=1, sticky="we")
+        self.tts_button = ttk.Button(top, text="Browse...", command=self._browse_tts)
+        self.tts_button.grid(row=0, column=2, sticky="e")
 
         self.cap_var = tk.StringVar()
         ttk.Label(top, text="Caption file:").grid(row=1, column=0, sticky="w")
@@ -167,6 +178,18 @@ class App(tk.Tk):
         )
         if p:
             self.stream_log_var.set(p)
+    
+    def _toggle_tts_input(self) -> None:
+        """Enable/disable TTS input fields based on mode selection."""
+        if self.use_tts_var.get():
+            self.tts_label.config(state="normal")
+            self.tts_entry.config(state="normal")
+            self.tts_button.config(state="normal")
+        else:
+            self.tts_label.config(state="disabled")
+            self.tts_entry.config(state="readonly")
+            self.tts_button.config(state="disabled")
+            self.tts_var.set("")  # Clear TTS path when disabled
 
     # -------- run/stop --------
 
@@ -175,17 +198,26 @@ class App(tk.Tk):
             messagebox.showinfo(APP_TITLE, "Already running.")
             return
 
-        tts = self.tts_var.get().strip()
+        use_tts = self.use_tts_var.get()
+        tts = self.tts_var.get().strip() if use_tts else None
         cap = self.cap_var.get().strip()
-        if not tts or not cap:
-            messagebox.showerror(APP_TITLE, "Please select both TTS and Caption files.")
+        
+        # Validate inputs
+        if not cap:
+            messagebox.showerror(APP_TITLE, "Please select a Caption file.")
             return
-        if not Path(tts).exists() or not Path(cap).exists():
-            messagebox.showerror(APP_TITLE, "One or both files do not exist.")
+        if use_tts and not tts:
+            messagebox.showerror(APP_TITLE, "Please select a TTS file or uncheck 'Include TTS Rewriting'.")
+            return
+        if not Path(cap).exists():
+            messagebox.showerror(APP_TITLE, "Caption file does not exist.")
+            return
+        if use_tts and tts and not Path(tts).exists():
+            messagebox.showerror(APP_TITLE, "TTS file does not exist.")
             return
 
         cfg = RewriterConfig(
-            tts=Path(tts),
+            tts=Path(tts) if tts else None,
             caption=Path(cap),
             num=int(self.num_var.get()),
             variants_per_request=int(self.vpr_var.get()),
@@ -198,6 +230,7 @@ class App(tk.Tk):
             temperature=float(self.temp_var.get()),
             api_key=self.key_var.get().strip() or None,
             stream_log=Path(self.stream_log_var.get()).resolve() if self.stream_log_var.get().strip() else None,
+            no_tts=not use_tts,  # Add flag for caption-only mode
         )
 
         self._clear_log()

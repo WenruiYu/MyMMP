@@ -262,9 +262,9 @@ def call_no_stream(client: OpenAI, model: str, system_prompt: str, user_prompt: 
 # ---------- Main ----------
 
 def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--tts", required=False, help="TTS file path (optional)")
-    ap.add_argument("--caption", required=True)
+    ap = argparse.ArgumentParser(description="Rewrite TikTok scripts - supports both TTS+Caption and Caption-only modes")
+    ap.add_argument("--tts", required=False, help="TTS file path (optional - omit for caption-only mode)")
+    ap.add_argument("--caption", required=True, help="Caption file path (required)")
     ap.add_argument("-n","--num", type=int, default=3, help="Total variants to generate")
     ap.add_argument("--variants-per-request", type=int, default=1, help="How many variants per API request")
     ap.add_argument("--model", default="deepseek-chat")
@@ -276,7 +276,7 @@ def main():
     ap.add_argument("--stream-log", default=None, help="Optional path to save full stream (reasoning+content)")
     ap.add_argument("--max_tokens", type=int, default=3072)
     ap.add_argument("--retries", type=int, default=2, help="Retries on malformed JSON")
-    ap.add_argument("--no-tts", action="store_true", help="Skip TTS generation, only process captions")
+    ap.add_argument("--no-tts", action="store_true", help="Caption-only mode - skip TTS generation, only process captions")
     args = ap.parse_args()
 
     api_key = os.environ.get("DEEPSEEK_API_KEY")
