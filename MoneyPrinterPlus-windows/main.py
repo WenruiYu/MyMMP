@@ -26,6 +26,21 @@ import time
 
 import streamlit as st
 
+# Load environment variables from .env file at application startup
+try:
+    from dotenv import load_dotenv
+    # Load .env file from project root (two levels up from MoneyPrinterPlus-windows)
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    env_file = os.path.join(project_root, '.env')
+    if os.path.exists(env_file):
+        load_dotenv(env_file)
+        print(f"✅ Loaded environment variables from {env_file}")
+    else:
+        print("⚠️  .env file not found, using system environment variables only")
+except ImportError:
+    print("⚠️  python-dotenv not installed, .env file will not be loaded automatically")
+    print("   Install with: pip install python-dotenv")
+
 from config.config import my_config, audio_voices_azure, audio_voices_ali, audio_voices_tencent
 from services.audio.alitts_service import AliAudioService
 from services.audio.azure_service import AzureAudioService

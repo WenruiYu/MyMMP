@@ -12,6 +12,19 @@ from pathlib import Path
 project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root / "MoneyPrinterPlus-windows"))
 
+# Load environment variables from .env file
+try:
+    from dotenv import load_dotenv
+    env_file = project_root / '.env'
+    if env_file.exists():
+        load_dotenv(env_file)
+        print(f"✅ Loaded environment variables from {env_file}")
+    else:
+        print("⚠️  .env file not found, using system environment variables only")
+except ImportError:
+    print("⚠️  python-dotenv not installed, .env file will not be loaded automatically")
+    print("   Install with: pip install python-dotenv")
+
 def check_environment_variable(var_name, description=""):
     """Check if an environment variable is set and print status."""
     value = os.getenv(var_name)

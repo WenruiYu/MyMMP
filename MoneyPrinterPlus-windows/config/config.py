@@ -29,6 +29,21 @@ import re
 
 from tools.file_utils import read_yaml, save_yaml
 
+# Load environment variables from .env file
+try:
+    from dotenv import load_dotenv
+    # Load .env file from project root
+    project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    env_file = os.path.join(project_root, '.env')
+    if os.path.exists(env_file):
+        load_dotenv(env_file)
+        print(f"✅ Loaded environment variables from {env_file}")
+    else:
+        print("⚠️  .env file not found, using system environment variables only")
+except ImportError:
+    print("⚠️  python-dotenv not installed, .env file will not be loaded automatically")
+    print("   Install with: pip install python-dotenv")
+
 app_title = "AI搞钱工具"
 
 local_audio_tts_providers = ['chatTTS', 'GPTSoVITS']
