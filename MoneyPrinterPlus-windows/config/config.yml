@@ -1,15 +1,15 @@
 audio:
   Ali:
-    access_key_id: LTAI5tSpu6Vj1DEdY1tUW18y
-    access_key_secret: Qp0pkp8yttogRzLivXxfLgzvYPoNGx
-    app_key: qN2ZG8iNX1GwgT1k
+    access_key_id: ${ALI_ACCESS_KEY_ID}
+    access_key_secret: ${ALI_ACCESS_KEY_SECRET}
+    app_key: ${ALI_APP_KEY}
   Azure:
-    service_region: SERVICE_REGION
-    speech_key: SPEECH_KEY
+    service_region: ${AZURE_SERVICE_REGION}
+    speech_key: ${AZURE_SPEECH_KEY}
   Tencent:
-    access_key_id: AKIDDKOQJF3g5HG1aw52mLhpkU4RbYKwMadU
-    access_key_secret: jHfpnY7SaWFn8JH2av9D5kCRSGrFTVKx
-    app_key: '1327948466'
+    access_key_id: ${TENCENT_ACCESS_KEY_ID}
+    access_key_secret: ${TENCENT_ACCESS_KEY_SECRET}
+    app_key: ${TENCENT_APP_KEY}
   local_recognition:
     fasterwhisper:
       compute_type: int8
@@ -27,37 +27,37 @@ captioning:
   provider: Azure
 llm:
   Azure:
-    api_key: YOUR_API_KEY
+    api_key: ${AZURE_OPENAI_API_KEY}
     base_url: http://base.url.openai
     model_name: null
   Baichuan:
-    api_key: YOUR_API_KEY
+    api_key: ${BAICHUAN_API_KEY}
     model_name: Baichuan3-Turbo
   DeepSeek:
-    api_key: sk-34f175ccadc4432a8688a44714487025
+    api_key: ${DEEPSEEK_API_KEY}
     base_url: https://api.deepseek.com/
     model_name: deepseek-chat
   Moonshot:
-    api_key: YOUR_API_KEY
+    api_key: ${MOONSHOT_API_KEY}
     model_name: moonshot-v1-8k
   Ollama:
     api_key: YOUR_API_KEY
     base_url: http://127.0.0.1:11434/
     model_name: llama3
   OpenAI:
-    api_key: YOUR_API_KEY
+    api_key: ${OPENAI_API_KEY}
     model_name: gpt-3.5-turbo
   Qianfan:
-    api_key: YOUR_API_KEY
+    api_key: ${QIANFAN_API_KEY}
     model_name: ERNIE-Bot-turbo
-    secret_key: YOUR_SK_KEY
+    secret_key: ${QIANFAN_SECRET_KEY}
   Tongyi:
-    api_key: YOUR_API_KEY
+    api_key: ${TONGYI_API_KEY}
     model_name: qwen-turbo
   provider: DeepSeek
 aigc:
   provider: DeepSeek
-  api_key: sk-34f175ccadc4432a8688a44714487025
+  api_key: ${DEEPSEEK_API_KEY}
   DeepSeek:
     model_name: deepseek-chat
     base_url: https://api.deepseek.com/
@@ -72,14 +72,14 @@ aigc:
     base_url: https://your-resource.openai.azure.com/
   Qianfan:
     model_name: ERNIE-Bot-turbo
-    api_key: YOUR_API_KEY
-    secret_key: YOUR_SECRET_KEY
+    api_key: ${QIANFAN_API_KEY}
+    secret_key: ${QIANFAN_SECRET_KEY}
   Baichuan:
     model_name: Baichuan3-Turbo
-    api_key: YOUR_API_KEY
+    api_key: ${BAICHUAN_API_KEY}
   Tongyi:
     model_name: qwen-turbo
-    api_key: YOUR_API_KEY
+    api_key: ${TONGYI_API_KEY}
 publisher:
   auto_publish: true
   common:

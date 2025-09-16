@@ -25,6 +25,7 @@ import os
 import shutil
 import streamlit as st
 import yaml
+import re
 
 from tools.file_utils import read_yaml, save_yaml
 
@@ -296,13 +297,35 @@ def load_session_state_from_yaml(first_visit):
         st.session_state[first_visit] = False
 
 
+def substitute_env_vars(obj):
+    """
+    Recursively substitute environment variables in a nested data structure.
+    Supports ${VAR_NAME} syntax.
+    """
+    if isinstance(obj, dict):
+        return {key: substitute_env_vars(value) for key, value in obj.items()}
+    elif isinstance(obj, list):
+        return [substitute_env_vars(item) for item in obj]
+    elif isinstance(obj, str):
+        # Replace ${VAR_NAME} with environment variable values
+        def replace_var(match):
+            var_name = match.group(1)
+            return os.getenv(var_name, match.group(0))  # Keep original if env var not found
+
+        return re.sub(r'\$\{([^}]+)\}', replace_var, obj)
+    else:
+        return obj
+
 def load_config():
     print("load_config")
     # 加载配置文件
     if not os.path.exists(config_file):
         shutil.copy(config_example_file, config_file)
     if os.path.exists(config_file):
-        return read_yaml(config_file)
+        config_data = read_yaml(config_file)
+        # Substitute environment variables
+        config_data = substitute_env_vars(config_data)
+        return config_data
 
 
 def test_config(todo_config, *args):

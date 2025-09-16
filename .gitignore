@@ -7,6 +7,9 @@ MoneyPrinterPlus-windows/venv/
 MoneyPrinterPlus-windows/config/session.yml
 MoneyPrinterPlus-windows/.streamlit/secrets.toml
 
+# Environment variables (contains sensitive API keys)
+.env
+
 # aigc files
 aigc/publish/
 aigc/__pycache__/
