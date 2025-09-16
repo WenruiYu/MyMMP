@@ -1,4 +1,4 @@
-#  Copyright © [2024] 程序那些事
+﻿#  Copyright © [2024] Wenrui Yu
 #
 #  All rights reserved. This software and associated documentation files (the "Software") are provided for personal and educational use only. Commercial use of the Software is strictly prohibited unless explicit permission is obtained from the author.
 #
@@ -12,7 +12,7 @@
 #
 #  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHOR OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #
-#  Author: 程序那些事
+#  Author: Wenrui Yu
 #  email: flydean@163.com
 #  Website: [www.flydean.com](http://www.flydean.com)
 #  GitHub: [https://github.com/ddean2009/MoneyPrinterPlus](https://github.com/ddean2009/MoneyPrinterPlus)
@@ -227,3 +227,4 @@ class VideoOverlayService:
                 return False, f"文件夹中没有找到 PNG 或 SVG 图片: {self.overlay_folder_path} (No PNG or SVG images found in folder)"
         
         return True, None
+

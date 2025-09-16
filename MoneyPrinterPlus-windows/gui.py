@@ -1,4 +1,4 @@
-#  Copyright © [2024] 程序那些事
+#  Copyright © [2024] Wenrui Yu
 #
 #  All rights reserved. This software and associated documentation files (the "Software") are provided for personal and educational use only. Commercial use of the Software is strictly prohibited unless explicit permission is obtained from the author.
 #
@@ -12,7 +12,7 @@
 #
 #  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHOR OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #
-#  Author: 程序那些事
+#  Author: Wenrui Yu
 #  email: flydean@163.com
 #  Website: [www.flydean.com](http://www.flydean.com)
 #  GitHub: [https://github.com/ddean2009/MoneyPrinterPlus](https://github.com/ddean2009/MoneyPrinterPlus)
@@ -189,6 +189,30 @@ def set_llm_model_name(provider, key):
     if provider not in my_config['llm']:
         my_config['llm'][provider] = {}
     my_config['llm'][provider]['model_name'] = st.session_state[key]
+    save_config()
+
+
+# AIGC Configuration Functions
+def save_aigc_api_key():
+    test_config(my_config, "aigc")
+    my_config['aigc']['api_key'] = st.session_state['aigc_api_key']
+    save_config()
+
+
+def set_aigc_provider():
+    my_config['aigc']['provider'] = st.session_state['aigc_provider']
+    save_config()
+
+
+def set_aigc_model_name(provider, key):
+    test_config(my_config, "aigc", provider)
+    my_config['aigc'][provider]['model_name'] = st.session_state[key]
+    save_config()
+
+
+def set_aigc_base_url(provider, key):
+    test_config(my_config, "aigc", provider)
+    my_config['aigc'][provider]['base_url'] = st.session_state[key]
     save_config()
 
 
@@ -460,3 +484,62 @@ with (llm_container):
                                           value=my_config['llm'].get(llm_provider, {}).get('model_name', ''),
                                           key=llm_provider + '_model_name', on_change=set_llm_model_name,
                                           args=(llm_provider, llm_provider + '_model_name'))
+
+# 设置AIGC (AI Content Generation)
+aigc_container = st.container(border=True)
+with aigc_container:
+    st.info(tr("AIGC Provider Info"))
+    aigc_providers = ['DeepSeek', 'OpenAI', 'Moonshot', 'Azure', 'Qianfan', 'Baichuan', 'Tongyi']
+    saved_aigc_provider = my_config['aigc'].get('provider', 'DeepSeek')
+    saved_aigc_provider_index = 0
+    for i, provider in enumerate(aigc_providers):
+        if provider == saved_aigc_provider:
+            saved_aigc_provider_index = i
+            break
+
+    aigc_provider = st.selectbox(tr("AIGC Provider"), options=aigc_providers, index=saved_aigc_provider_index,
+                                key='aigc_provider', on_change=set_aigc_provider)
+    print(aigc_provider)
+
+    # 设置aigc的值：
+    with st.expander(aigc_provider, expanded=True):
+        tips = f"""
+               ##### {aigc_provider} 配置信息
+               """
+        st.info(tips)
+
+        # API Key for AIGC
+        aigc_api_key = my_config['aigc'].get(aigc_provider, {}).get('api_key', '')
+        if not aigc_api_key:
+            aigc_api_key = my_config['aigc'].get('api_key', '')  # Fallback to general API key
+        aigc_api_key_input = st.text_input(tr("API Key"), value=aigc_api_key, type="password",
+                                           key='aigc_api_key', on_change=save_aigc_api_key)
+
+        # Base URL for AIGC
+        if aigc_provider in ['Azure', 'DeepSeek', 'Ollama']:
+            aigc_base_url = my_config['aigc'].get(aigc_provider, {}).get('base_url', '')
+            if not aigc_base_url:
+                if aigc_provider == 'DeepSeek':
+                    aigc_base_url = 'https://api.deepseek.com'
+                elif aigc_provider == 'Azure':
+                    aigc_base_url = 'https://your-resource.openai.azure.com/'
+            aigc_base_url_input = st.text_input(tr("Base Url"), value=aigc_base_url, type="password",
+                                                key=aigc_provider + '_aigc_base_url',
+                                                on_change=set_aigc_base_url,
+                                                args=(aigc_provider, aigc_provider + '_aigc_base_url'))
+
+        # Model Name for AIGC
+        default_models = {
+            'DeepSeek': 'deepseek-chat',
+            'OpenAI': 'gpt-3.5-turbo',
+            'Moonshot': 'moonshot-v1-8k',
+            'Azure': 'gpt-35-turbo',
+            'Qianfan': 'ERNIE-Bot',
+            'Baichuan': 'Baichuan2-53B',
+            'Tongyi': 'qwen-turbo'
+        }
+        aigc_model_name = my_config['aigc'].get(aigc_provider, {}).get('model_name', default_models.get(aigc_provider, ''))
+        aigc_model_name_input = st.text_input(tr("Model Name"), value=aigc_model_name,
+                                             key=aigc_provider + '_aigc_model_name',
+                                             on_change=set_aigc_model_name,
+                                             args=(aigc_provider, aigc_provider + '_aigc_model_name'))

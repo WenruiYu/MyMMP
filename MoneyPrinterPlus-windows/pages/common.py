@@ -1,4 +1,4 @@
-#  Copyright © [2024] 程序那些事
+﻿#  Copyright © [2024] Wenrui Yu
 #
 #  All rights reserved. This software and associated documentation files (the "Software") are provided for personal and educational use only. Commercial use of the Software is strictly prohibited unless explicit permission is obtained from the author.
 #
@@ -41,6 +41,7 @@ def common_ui():
     st.sidebar.page_link("pages/01_auto_video.py", label=tr("Generate Video"))
     st.sidebar.page_link("pages/02_mix_video.py", label=tr("Mix Video"))
     st.sidebar.page_link("pages/03_auto_publish.py", label=tr("Video Auto Publish"))
+    st.sidebar.page_link("pages/04_aigc_rewriter.py", label=tr("AI Content Rewriter"))
     st.sidebar.markdown(
         '<a style="text-align: center;padding-top: 0rem;" href="https://github.com/WenruiYu">Developed by Wenrui Yu</a>',
         unsafe_allow_html=True)

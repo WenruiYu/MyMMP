@@ -1,4 +1,4 @@
-#  Copyright © [2024] 程序那些事
+﻿#  Copyright © [2024] Wenrui Yu
 #
 #  All rights reserved. This software and associated documentation files (the "Software") are provided for personal and educational use only. Commercial use of the Software is strictly prohibited unless explicit permission is obtained from the author.
 #
@@ -12,7 +12,7 @@
 #
 #  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHOR OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #
-#  Author: 程序那些事
+#  Author: Wenrui Yu
 #  email: flydean@163.com
 #  Website: [www.flydean.com](http://www.flydean.com)
 #  GitHub: [https://github.com/ddean2009/MoneyPrinterPlus](https://github.com/ddean2009/MoneyPrinterPlus)
@@ -92,38 +92,109 @@ def generate_video_for_mix(video_generator):
     save_session_state_to_yaml()
     videos_count = st.session_state.get('videos_count')
     if videos_count is not None:
-        # Create batch folder with timestamp
-        from tools.utils import random_with_system_time
-        import os
-        from datetime import datetime
+        videos_count = int(videos_count)
         
-        # Use datetime for a more readable folder name
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        batch_folder_name = f"batch_{timestamp}"
+        # Check if a batch is already in progress
+        batch_in_progress = st.session_state.get('batch_in_progress', False)
+        batch_folder_path = st.session_state.get('batch_folder_path')
+        batch_video_counter = st.session_state.get('batch_video_counter', 0)
+        batch_total_videos = st.session_state.get('batch_total_videos', 0)
         
-        # Get the final directory path
-        script_dir = os.path.dirname(os.path.abspath(__file__))
-        final_dir = os.path.abspath(os.path.join(script_dir, "../final"))
-        batch_folder_path = os.path.join(final_dir, batch_folder_name)
+        # Prevent re-triggering if batch is already in progress
+        if batch_in_progress and batch_video_counter > 0 and batch_video_counter < batch_total_videos:
+            print(f"Batch already in progress: {batch_video_counter}/{batch_total_videos} videos completed")
+            st.warning(f"Batch already in progress: {batch_video_counter}/{batch_total_videos} videos completed. Please wait for completion or reset the batch.")
+            return
         
-        # Create the batch folder
-        os.makedirs(batch_folder_path, exist_ok=True)
+        # Only create a new batch if no batch is in progress or the previous batch is complete
+        if not batch_in_progress or batch_video_counter >= batch_total_videos:
+            # Create batch folder with timestamp
+            from tools.utils import random_with_system_time
+            import os
+            from datetime import datetime
+            
+            # Use datetime for a more readable folder name
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            batch_folder_name = f"batch_{timestamp}"
+            
+            # Get the final directory path
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            final_dir = os.path.abspath(os.path.join(script_dir, "../final"))
+            batch_folder_path = os.path.join(final_dir, batch_folder_name)
+            
+            # Create the batch folder
+            os.makedirs(batch_folder_path, exist_ok=True)
+            
+            # Store batch folder path and reset video counter in session state
+            st.session_state['batch_folder_path'] = batch_folder_path
+            st.session_state['batch_video_counter'] = 0
+            st.session_state['batch_total_videos'] = videos_count
+            st.session_state['batch_in_progress'] = True
+            st.session_state['batch_start_index'] = 0
+            
+            print(f"Starting new batch: {batch_folder_name} with {videos_count} videos")
+        else:
+            # Resume existing batch
+            print(f"Resuming batch at video {batch_video_counter + 1} of {batch_total_videos}")
+            st.session_state['batch_start_index'] = batch_video_counter
         
-        # Store batch folder path and reset video counter in session state
-        st.session_state['batch_folder_path'] = batch_folder_path
-        st.session_state['batch_video_counter'] = 0
+        # Generate videos starting from where we left off
+        start_index = st.session_state.get('batch_start_index', 0)
         
-        for i in range(int(videos_count)):
-            # Increment video counter for this batch
-            st.session_state['batch_video_counter'] += 1
-            main_generate_ai_video_for_mix(video_generator)
+        try:
+            for i in range(start_index, videos_count):
+                # Check if we should stop (in case of interruption or state change)
+                if not st.session_state.get('batch_in_progress', False):
+                    print("Batch generation stopped by user or state change")
+                    break
+                
+                # Increment video counter for this batch
+                st.session_state['batch_video_counter'] += 1
+                current_video_num = st.session_state['batch_video_counter']
+                print(f"Generating video {current_video_num} of {videos_count}")
+                
+                try:
+                    main_generate_ai_video_for_mix(video_generator)
+                    # Save state after each successful video
+                    save_session_state_to_yaml()
+                except Exception as e:
+                    print(f"Error generating video {current_video_num}: {str(e)}")
+                    st.error(f"Error generating video {current_video_num}: {str(e)}")
+                    # Save state even on error
+                    save_session_state_to_yaml()
+                    # Don't break the loop, continue with next video
+                    continue
+                
+                # Check if batch is complete
+                if st.session_state['batch_video_counter'] >= st.session_state['batch_total_videos']:
+                    st.session_state['batch_in_progress'] = False
+                    st.session_state['batch_completed'] = True
+                    print(f"Batch complete: {st.session_state['batch_video_counter']} videos generated")
+                    st.success(f"✅ Batch complete! {st.session_state['batch_video_counter']} videos generated in {batch_folder_path}")
+                    save_session_state_to_yaml()
+                    break
+        except KeyboardInterrupt:
+            print("Batch generation interrupted by user")
+            st.warning("Batch generation interrupted. You can resume from where you left off.")
+            save_session_state_to_yaml()
+        except Exception as e:
+            print(f"Unexpected error in batch generation: {str(e)}")
+            st.error(f"Unexpected error in batch generation: {str(e)}")
+            save_session_state_to_yaml()
 
 
 common_ui()
 
-st.markdown(f"<h1 style='text-align: center; font-weight:bold; font-family:comic sans ms; padding-top: 0rem;'> \
-            {app_title}</h1>", unsafe_allow_html=True)
-st.markdown("<h2 style='text-align: center;padding-top: 0rem;'>视频批量混剪工具</h2>", unsafe_allow_html=True)
+st.markdown(f"""
+    <div style="text-align: center; padding: 1rem 0; margin-bottom: 2rem; border-bottom: 2px solid #e0e0e0;">
+        <h1 style="color: #1f77b4; font-weight: 600; font-size: 2.5rem; margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
+            {app_title}
+        </h1>
+        <p style="color: #666; font-size: 1.2rem; margin: 0.5rem 0 0 0; font-weight: 300;">
+            视频批量混剪工具
+        </p>
+    </div>
+""", unsafe_allow_html=True)
 
 # 场景设置
 mix_video_container = st.container(border=True)
@@ -469,10 +540,45 @@ if not st.session_state.get("skip_tts", False):
 # 生成视频
 video_generator = st.container(border=True)
 with video_generator:
+    # Show batch progress if a batch is in progress or completed
+    batch_in_progress = st.session_state.get('batch_in_progress', False)
+    batch_completed = st.session_state.get('batch_completed', False)
+    batch_video_counter = st.session_state.get('batch_video_counter', 0)
+    batch_total_videos = st.session_state.get('batch_total_videos', 0)
+    
+    if batch_in_progress or batch_completed:
+        if batch_completed:
+            st.success(f"✅ {tr('Batch Complete')}: {batch_video_counter}/{batch_total_videos} {tr('videos generated')}")
+        else:
+            st.info(f"📊 {tr('Batch Progress')}: {batch_video_counter}/{batch_total_videos} {tr('videos completed')}")
+        
+        progress = batch_video_counter / batch_total_videos if batch_total_videos > 0 else 0
+        st.progress(progress)
+        
+        # Add a button to reset the batch
+        reset_label = tr("Start New Batch") if batch_completed else tr("Reset Batch")
+        if st.button(label=reset_label, type="secondary"):
+            st.session_state['batch_in_progress'] = False
+            st.session_state['batch_completed'] = False
+            st.session_state['batch_folder_path'] = None
+            st.session_state['batch_video_counter'] = 0
+            st.session_state['batch_total_videos'] = 0
+            st.session_state['batch_start_index'] = 0
+            st.rerun()
+    
     st.slider(label=tr("how many videos do you want"), min_value=1, value=1, max_value=100, step=1,
               key="videos_count")
-    st.button(label=tr("Generate Video Button"), type="primary", on_click=generate_video_for_mix,
-              args=(video_generator,))
+    
+    # Disable generate button only if batch is in progress (not when completed)
+    if batch_in_progress and not batch_completed:
+        button_label = tr("Batch in Progress...")
+        button_disabled = True
+    else:
+        button_label = tr("Generate Video Button")
+        button_disabled = False
+    
+    st.button(label=button_label, type="primary", on_click=generate_video_for_mix,
+              args=(video_generator,), disabled=button_disabled)
 result_video_file = st.session_state.get("result_video_file")
 batch_folder_path = st.session_state.get("batch_folder_path")
 
@@ -498,3 +604,4 @@ if result_video_file:
         # Clear the session state if file doesn't exist
         st.session_state["result_video_file"] = None
         st.warning(tr("The video file no longer exists. It may have been moved or deleted."))
+

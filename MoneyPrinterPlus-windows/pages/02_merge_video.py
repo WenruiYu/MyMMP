@@ -1,4 +1,4 @@
-#  Copyright © [2024] 程序那些事
+﻿#  Copyright © [2024] Wenrui Yu
 #
 #  All rights reserved. This software and associated documentation files (the "Software") are provided for personal and educational use only. Commercial use of the Software is strictly prohibited unless explicit permission is obtained from the author.
 #
@@ -12,7 +12,7 @@
 #
 #  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHOR OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #
-#  Author: 程序那些事
+#  Author: Wenrui Yu
 #  email: flydean@163.com
 #  Website: [www.flydean.com](http://www.flydean.com)
 #  GitHub: [https://github.com/ddean2009/MoneyPrinterPlus](https://github.com/ddean2009/MoneyPrinterPlus)
@@ -96,9 +96,16 @@ def generate_video_for_merge(video_generator):
 
 common_ui()
 
-st.markdown(f"<h1 style='text-align: center; font-weight:bold; font-family:comic sans ms; padding-top: 0rem;'> \
-            {app_title}</h1>", unsafe_allow_html=True)
-st.markdown("<h2 style='text-align: center;padding-top: 0rem;'>视频批量合并工具</h2>", unsafe_allow_html=True)
+st.markdown(f"""
+    <div style="text-align: center; padding: 1rem 0; margin-bottom: 2rem; border-bottom: 2px solid #e0e0e0;">
+        <h1 style="color: #1f77b4; font-weight: 600; font-size: 2.5rem; margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
+            {app_title}
+        </h1>
+        <p style="color: #666; font-size: 1.2rem; margin: 0.5rem 0 0 0; font-weight: 300;">
+            视频批量合并工具
+        </p>
+    </div>
+""", unsafe_allow_html=True)
 
 # 场景设置
 merge_video_container = st.container(border=True)
@@ -254,3 +261,4 @@ with video_generator:
 result_video_file = st.session_state.get("result_video_file")
 if result_video_file:
     st.video(result_video_file)
+
