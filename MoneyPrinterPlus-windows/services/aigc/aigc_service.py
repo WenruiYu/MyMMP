@@ -81,8 +81,11 @@ class AIGCService:
             if log_callback:
                 log_callback(f"Starting AIGC processing...")
                 log_callback(f"Caption file: {caption_path}")
+                log_callback(f"Caption directory: {Path(caption_path).parent}")
                 if tts_path:
                     log_callback(f"TTS file: {tts_path}")
+                    log_callback(f"TTS directory: {Path(tts_path).parent}")
+                    log_callback(f"Different directories: {Path(tts_path).parent != Path(caption_path).parent}")
                 else:
                     log_callback("Mode: Caption-only (no TTS)")
 

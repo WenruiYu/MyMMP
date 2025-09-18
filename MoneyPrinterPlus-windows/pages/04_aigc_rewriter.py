@@ -356,7 +356,7 @@ class AIGCRewriterPage:
         caption_path = st.session_state.get('aigc_caption_file_path', '')
         tts_path = st.session_state.get('aigc_tts_file_path', '')
         
-        def show_files(file_type: str, pattern: str, icon: str, file_path: str, show_dir: bool = True):
+        def show_files(file_type: str, pattern: str, icon: str, file_path: str, always_show_dir: bool = False):
             if not file_path:
                 return
             
@@ -365,20 +365,20 @@ class AIGCRewriterPage:
             
             if files:
                 st.markdown(f"**{tr(f'{file_type} Variants:')}** ({len(files)} {tr('files generated')})")
-                if show_dir:
-                    st.info(f"**{tr('Files saved to:')}** `{file_dir}`")
+                st.info(f"**{tr('Files saved to:')}** `{file_dir}`")
                 
                 for f in sorted(files):
                     st.text(f"{icon} {f.name} - {f.stat().st_size} bytes")
+            else:
+                # If no files found in expected directory, check if they might be elsewhere
+                st.warning(f"⚠️ No {file_type.lower()} variants found in `{file_dir}`")
         
-        # Show results
-        show_files("Caption", "variant_*_caption.txt", "📄", caption_path)
+        # Always show both sections with their respective directories
+        if caption_path:
+            show_files("Caption", "variant_*_caption.txt", "📄", caption_path)
         
         if use_tts and tts_path:
-            caption_dir = Path(caption_path).parent if caption_path else None
-            tts_dir = Path(tts_path).parent
-            show_separate = tts_dir != caption_dir
-            show_files("TTS", "variant_*_tts.txt", "🎤", tts_path, show_separate)
+            show_files("TTS", "variant_*_tts.txt", "🎤", tts_path)
     
     def process_files(self, config: dict, caption_path: str, tts_path: Optional[str]):
         """Process files with AIGC service."""
