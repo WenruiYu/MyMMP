@@ -63,6 +63,42 @@ install_python_dependencies() {
       ;;
   esac
 
+  # Setup AIGC functionality
+  echo ""
+  echo "================================"
+  echo "Setting up AIGC functionality..."
+  echo "================================"
+  
+  # Install/upgrade OpenAI package for AIGC compatibility
+  echo "Installing OpenAI package for AIGC..."
+  python -m pip install --upgrade "openai>=1.40.0"
+  
+  # Setup environment variables
+  echo "Setting up environment variables..."
+  cd "$PARENT_DIR"
+  if [ ! -f .env ]; then
+    if [ -f .env.example ]; then
+      echo "Creating .env file from template..."
+      cp .env.example .env
+      echo "✅ .env file created! Please edit it with your API keys."
+    else
+      echo "⚠️  .env.example not found. Please create .env file manually."
+    fi
+  else
+    echo "✅ .env file already exists."
+  fi
+  
+  # Test AIGC setup
+  echo "Testing AIGC integration..."
+  python setup_aigc.py
+  if [ $? -eq 0 ]; then
+    echo "✅ AIGC setup completed successfully!"
+  else
+    echo "⚠️  AIGC setup completed with warnings. Check the output above."
+  fi
+  
+  cd "$DIR"
+
   if [ -n "$VIRTUAL_ENV" ] && ! inDocker; then
     if command -v deactivate >/dev/null; then
       echo "Exiting Python virtual environment."
@@ -114,6 +150,17 @@ inDocker() {
 if [[ "$OSTYPE" == "lin"* ]]; then
 
   install_python_dependencies
+  
+  echo ""
+  echo "================================"
+  echo "Setup completed!"
+  echo "================================"
+  echo ""
+  echo "Next steps:"
+  echo "1. Edit .env file with your API keys"
+  echo "2. Run: sh start.sh"
+  echo "3. Navigate to 'AI Content Rewriter' page"
+  echo ""
 
 elif [[ "$OSTYPE" == "darwin"* ]]; then
   # The initial setup script to prep the environment on macOS
@@ -123,7 +170,17 @@ elif [[ "$OSTYPE" == "darwin"* ]]; then
     echo "You may need to install Python. The command for this is brew install python@3.10."
   fi
 
-  echo -e "Setup finished! Run sh start.sh to start."
+  echo ""
+  echo "================================"
+  echo "Setup completed!"
+  echo "================================"
+  echo ""
+  echo "Next steps:"
+  echo "1. Edit .env file with your API keys"
+  echo "2. Run: sh start.sh"
+  echo "3. Navigate to 'AI Content Rewriter' page"
+  echo ""
+  echo "Setup finished! Run sh start.sh to start."
 elif [[ "$OSTYPE" == "cygwin" ]]; then
   # Cygwin is a standalone suite of Linux utilities on Windows
   echo "This hasn't been validated on cygwin yet."

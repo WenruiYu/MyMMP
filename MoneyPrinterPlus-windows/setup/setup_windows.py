@@ -38,6 +38,13 @@ def install_requirement(headless: bool = False):
     setup_common.install_requirements_inbulk(
         "requirements.txt", show_stdout=True, upgrade=False
     )
+    
+    # Install AIGC-specific dependencies
+    print(f"{YELLOW}Installing AIGC dependencies...{RESET_COLOR}")
+    setup_common.install("openai>=1.40.0", show_stdout=True)
+    setup_common.install("python-dotenv", show_stdout=True)
+    
+    print(f"{YELLOW}AIGC dependencies installed successfully!{RESET_COLOR}")
 
 if __name__ == "__main__":
 

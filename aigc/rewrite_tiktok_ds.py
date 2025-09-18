@@ -283,7 +283,22 @@ def main():
     if not api_key:
         raise RuntimeError("请先设置环境变量 DEEPSEEK_API_KEY")
 
-    client = OpenAI(api_key=api_key, base_url=args.base_url)
+    # Initialize OpenAI client with error handling for version compatibility
+    try:
+        client = OpenAI(api_key=api_key, base_url=args.base_url)
+    except TypeError as e:
+        if "proxies" in str(e):
+            # Fallback for older OpenAI client versions
+            print(f"⚠️ OpenAI client version compatibility issue: {e}")
+            print("🔄 Trying fallback initialization...")
+            try:
+                # Try simpler initialization for older versions
+                client = OpenAI(api_key=api_key)
+                client.base_url = args.base_url
+            except Exception as fallback_error:
+                raise RuntimeError(f"Failed to initialize OpenAI client. Please update openai package: pip install openai>=1.40.0") from fallback_error
+        else:
+            raise
 
     cap_path = Path(args.caption).resolve()
     cap_dir = cap_path.parent

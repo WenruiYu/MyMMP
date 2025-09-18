@@ -38,6 +38,13 @@ def main_menu(platform_requirements_file, show_stdout: bool = False):
     # Upgrade pip if needed
     setup_common.install('pip', show_stdout=show_stdout)
     setup_common.install_requirements(platform_requirements_file, check_no_verify_flag=False, show_stdout=show_stdout)
+    
+    # Install AIGC-specific dependencies
+    print(f"{YELLOW}Installing AIGC dependencies...{RESET_COLOR}")
+    setup_common.install('openai>=1.40.0', show_stdout=show_stdout)
+    setup_common.install('python-dotenv', show_stdout=show_stdout)
+    
+    print(f"{YELLOW}AIGC dependencies installed successfully!{RESET_COLOR}")
 
 
 if __name__ == '__main__':

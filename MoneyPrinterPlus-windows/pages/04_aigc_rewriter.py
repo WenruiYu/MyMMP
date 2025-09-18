@@ -73,11 +73,11 @@ class AIGCRewriterPage:
             'aigc_api_key': '',
             'aigc_model': 'deepseek-chat',
             'aigc_base_url': 'https://api.deepseek.com',
-            'aigc_max_tokens': 3072,
+            'aigc_max_tokens': 8192,
             'aigc_temperature': 0.8,
             'aigc_stream': True,
             'aigc_no_reasoning': False,
-            'aigc_num_variants': 3,
+            'aigc_num_variants': 25,
             'aigc_variants_per_request': 1,
             'aigc_use_tts': True
         }
