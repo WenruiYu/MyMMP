@@ -243,12 +243,12 @@ class AIGCRewriterPage:
         
         with col1:
             num_variants = st.number_input(
-                tr("Number of Variants"), 1, 50, 
-                st.session_state.get('aigc_num_variants', 3),
+                tr("Number of Variants"), 1, 500, 
+                st.session_state.get('aigc_num_variants', 25),
                 key='aigc_num_variants'
             )
             variants_per_request = st.number_input(
-                tr("Variants per Request"), 1, 5,
+                tr("Variants per Request"), 1, 50,
                 st.session_state.get('aigc_variants_per_request', 1),
                 key='aigc_variants_per_request'
             )
@@ -260,8 +260,8 @@ class AIGCRewriterPage:
                 0.1, key='aigc_temperature'
             )
             max_tokens = st.slider(
-                tr("Max Tokens"), 256, 4096,
-                st.session_state.get('aigc_max_tokens', 3072),
+                tr("Max Tokens"), 256, 16384,
+                st.session_state.get('aigc_max_tokens', 8192),
                 256, key='aigc_max_tokens'
             )
         
