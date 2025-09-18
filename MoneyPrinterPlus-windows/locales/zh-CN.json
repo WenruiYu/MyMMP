@@ -319,7 +319,6 @@
   "Limit 200MB per file": "每个文件限制200MB",
   "Browse files": "浏览文件",
   "Remove file": "删除文件",
-  "Upload file": "上传文件",
   "Drop file here or click to browse": "将文件拖放到此处或点击浏览",
   "Files uploaded successfully": "文件上传成功",
   "File uploaded successfully": "文件上传成功",
@@ -394,7 +393,6 @@
   "Cancelled": "已取消",
 
   "Start": "开始",
-  "Stop": "停止",
   "Restart": "重启",
   "Reset": "重置",
   "Refresh": "刷新",
@@ -422,14 +420,7 @@
 
   "AIGC service not found. Please ensure AIGC functionality is properly installed.": "未找到AIGC服务。请确保AIGC功能已正确安装。",
   "No videos found in the specified directories": "在指定目录中未找到视频",
-  "Click the test button, one new page will be opened, if not, that means your config has some error.": "点击测试按钮，将打开一个新页面，如果没有打开，则表示您的配置有错误。",
-  "Make sure your env is ready, before start publish": "在开始发布前，请确保您的环境已准备就绪",
-  "Will create approximately {estimated_segments} video segments of {min_seg}-{max_seg} seconds each to reach {target_len} seconds total.": "将创建大约{estimated_segments}个视频片段，每个片段时长{min_seg}-{max_seg}秒，总共{target_len}秒。",
   "Random selection enabled": "随机选择已启用",
-  "Add PNG/SVG overlay to videos. Transparent areas will show the video, non-transparent areas will show the overlay image. The overlay will be automatically scaled to match video dimensions. For best results, use overlays with the same aspect ratio as your videos.": "为视频添加PNG/SVG叠加层。透明区域将显示视频，非透明区域将显示叠加层图像。叠加层将自动缩放以匹配视频尺寸。为获得最佳效果，请使用与视频相同纵横比的叠加层。",
-  "Videos saved in batch folder: ": "视频已保存到批次文件夹：",
-  "Generated videos: ": "已生成视频：",
-  "The video file no longer exists. It may have been moved or deleted.": "视频文件不再存在。可能已被移动或删除。",
   "File {session_file} not found.": "文件{session_file}未找到。",
   "音频生成失败: ": "音频生成失败：",
   "音频文件生成失败，可能是TTS服务问题（免费试用过期或配额用尽）": "音频文件生成失败，可能是TTS服务问题（免费试用过期或配额用尽）",
@@ -442,7 +433,7 @@
   "腾讯语音测试失败: ": "腾讯语音测试失败：",
 
   "Manual Path Input": "手动路径输入",
-  "Enter file path manually (drag & drop or paste)": "手动输入文件路径（拖拽或粘贴）",
+  "Enter file path or click Browse": "输入文件路径或点击浏览",
   "TTS Text File Path": "TTS文本文件路径",
   "Caption File Path": "字幕文件路径",
   "Or upload file above": "或在上方上传文件",
@@ -454,6 +445,18 @@
   "Both manual path and uploaded file provided": "同时提供了手动路径和上传文件",
   "Please choose either manual path or file upload, not both": "请选择手动路径或文件上传，不能同时使用",
 
+  "Manual path": "手动路径",
   "Upload file": "上传文件",
-  "Manual path": "手动路径"
+
+  "Files saved to:": "文件保存至：",
+  "files generated": "个文件已生成",
+  "Preview generated files": "预览生成的文件",
+
+  "Please provide caption file path": "请提供字幕文件路径",
+  "Please provide TTS file path": "请提供TTS文件路径",
+  "Paste: C:\\Users\\plove\\Downloads\\test\\tts.txt": "粘贴：C:\\Users\\plove\\Downloads\\test\\tts.txt",
+  "Paste: C:\\Users\\plove\\Downloads\\test\\caption.txt": "粘贴：C:\\Users\\plove\\Downloads\\test\\caption.txt",
+  "Browse": "浏览",
+  "Browse TTS File": "浏览TTS文件", 
+  "Browse Caption File": "浏览字幕文件"
 }

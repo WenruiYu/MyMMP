@@ -22,3 +22,13 @@ numpy==1.26.4
 faster-whisper==1.0.3
 requests
 aiohttp
+
+moviepy
+opencv-python
+pandas
+python-dotenv
+tencentcloud-sdk-python
+alibabacloud_nls20190301
+websocket-client
+httpx
+tiktoken

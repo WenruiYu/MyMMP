@@ -44,7 +44,7 @@ except ImportError:
     print("⚠️  python-dotenv not installed, .env file will not be loaded automatically")
     print("   Install with: pip install python-dotenv")
 
-app_title = "AI搞钱工具"
+app_title = "AI工具箱"
 
 local_audio_tts_providers = ['chatTTS', 'GPTSoVITS']
 local_audio_recognition_providers = ['fasterwhisper', ]
